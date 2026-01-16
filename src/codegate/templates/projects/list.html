@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}项目管理 - CodeGate{% endblock %}
+
+{% block content %}
+<!--
+页面功能：项目列表页
+主要数据绑定：
+- projects: 项目列表（分页数据）
+- total: 总记录数
+- page: 当前页码
+- page_size: 每页数量
+-->
+<div>
+    <!-- 页面标题和操作按钮 -->
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">项目管理</h1>
+        <a href="/projects/new"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition-colors">
+            <i class="fas fa-plus mr-2"></i>创建项目
+        </a>
+    </div>
+
+    <!-- 搜索和筛选栏 -->
+    <div class="bg-white shadow-sm rounded-lg overflow-hidden mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <form id="search-form" class="flex flex-col sm:flex-row gap-4" onsubmit="return false;">
+                <div class="flex-1">
+                    <input type="text" id="search-input" placeholder="搜索项目名称..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="sm:w-48">
+                    <select id="status-filter"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">全部状态</option>
+                        <option value="true">启用</option>
+                        <option value="false">禁用</option>
+                    </select>
+                </div>
+                <button type="button" onclick="handleSearch()"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors">
+                    <i class="fas fa-search mr-2"></i>搜索
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 项目表格 -->
+    <div class="bg-white shadow-sm rounded-lg overflow-hidden">
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            style="width: 80px;">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            style="width: 200px;">名称</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            style="width: 300px;">描述</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            style="width: 150px;">创建时间</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            style="width: 150px;">有效期</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            style="width: 100px;">状态</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            style="width: 200px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="projects-table" class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页组件 -->
+        <div class="px-4 py-3 bg-white border-t border-gray-200 flex items-center justify-between">
+            <div class="text-sm text-gray-700">
+                共 <span id="total-count">0</span> 个项目
+            </div>
+            <div class="flex items-center space-x-2" id="pagination">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // API 请求封装
+    async function apiRequest(method, url, data = null) {
+        const options = {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
+
+        try {
+            const response = await fetch(url, options);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail || '请求失败');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('API 请求错误:', error);
+            throw error;
+        }
+    }
+
+    let currentPage = 1;
+    const pageSize = 20;
+    let currentSearch = '';
+    let currentStatus = '';
+
+    // 格式化日期时间
+    function formatDateTime(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+    }
+
+    // 截断文本
+    function truncateText(text, maxLength = 50) {
+        if (!text) return '-';
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
+    }
+
+    async function loadProjects(page = 1, search = '', status = '') {
+        try {
+            const params = new URLSearchParams({
+                page: page.toString(),
+                page_size: pageSize.toString(),
+            });
+            if (search) {
+                params.append('search', search);
+            }
+            if (status) {
+                params.append('status', status);
+            }
+
+            const response = await fetch(`/api/projects?${params}`);
+            const data = await response.json();
+
+            const tbody = document.getElementById('projects-table');
+            const totalCount = document.getElementById('total-count');
+
+            totalCount.textContent = data.total;
+
+            if (data.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-gray-500">暂无项目</td></tr>';
+                updatePagination(data.total, page);
+                return;
+            }
+
+            tbody.innerHTML = data.items.map(project => {
+                // 状态 Badge
+                const statusBadge = project.status
+                    ? '<span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">启用</span>'
+                    : '<span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">禁用</span>';
+
+                // 有效期显示（过期显示红色）
+                const expiresAt = project.expires_at
+                    ? formatDateTime(project.expires_at)
+                    : '永久有效';
+                const expiresAtClass = project.is_expired ? 'text-red-600' : 'text-gray-500';
+
+                const createdAt = formatDateTime(project.created_at);
+                const description = truncateText(project.description, 50);
+
+                return `
+                <tr class="border-b border-gray-200 hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${project.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <a href="/projects/${project.id}" class="text-indigo-600 hover:text-indigo-900">${project.name}</a>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${description}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${createdAt}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${expiresAtClass}">${expiresAt}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="/projects/${project.id}/edit" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                            <i class="fas fa-edit mr-1"></i>编辑
+                        </a>
+                        <button onclick="toggleProjectStatus(${project.id}, ${!project.status})" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                            <i class="fas fa-toggle-${project.status ? 'on' : 'off'} mr-1"></i>${project.status ? '禁用' : '启用'}
+                        </button>
+                        <button onclick="deleteProject(${project.id})" class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash mr-1"></i>删除
+                        </button>
+                    </td>
+                </tr>
+            `;
+            }).join('');
+
+            // 更新分页
+            updatePagination(data.total, page);
+            currentPage = page;
+            currentSearch = search;
+            currentStatus = status;
+        } catch (error) {
+            console.error('加载项目列表失败:', error);
+            document.getElementById('projects-table').innerHTML =
+                '<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">加载失败，请刷新重试</td></tr>';
+        }
+    }
+
+    function updatePagination(total, page) {
+        const totalPages = Math.ceil(total / pageSize);
+        const pagination = document.getElementById('pagination');
+
+        if (totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+
+        let html = `<span class="text-sm text-gray-700 mr-4">第 ${page} 页，共 ${totalPages} 页</span>`;
+
+        // 上一页按钮
+        if (page > 1) {
+            html += `<button onclick="loadProjects(${page - 1}, '${currentSearch}', '${currentStatus}')" 
+                 class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">上一页</button>`;
+        } else {
+            html += `<button disabled class="px-3 py-2 text-sm border border-gray-300 rounded-md opacity-50 cursor-not-allowed">上一页</button>`;
+        }
+
+        // 页码按钮
+        const startPage = Math.max(1, page - 2);
+        const endPage = Math.min(totalPages, page + 2);
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button onclick="loadProjects(${i}, '${currentSearch}', '${currentStatus}')" 
+                 class="px-3 py-2 text-sm border border-gray-300 rounded-md transition-colors ${i === page ? 'bg-indigo-600 text-white' : 'hover:bg-gray-50'}">${i}</button>`;
+        }
+
+        // 下一页按钮
+        if (page < totalPages) {
+            html += `<button onclick="loadProjects(${page + 1}, '${currentSearch}', '${currentStatus}')" 
+                 class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">下一页</button>`;
+        } else {
+            html += `<button disabled class="px-3 py-2 text-sm border border-gray-300 rounded-md opacity-50 cursor-not-allowed">下一页</button>`;
+        }
+
+        pagination.innerHTML = html;
+    }
+
+    // 搜索处理
+    function handleSearch() {
+        const search = document.getElementById('search-input').value.trim();
+        const status = document.getElementById('status-filter').value;
+        loadProjects(1, search, status);
+    }
+
+    // 切换项目状态
+    async function toggleProjectStatus(id, newStatus) {
+        try {
+            const response = await fetch(`/api/projects/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ status: newStatus }),
+            });
+
+            if (response.ok) {
+                loadProjects(currentPage, currentSearch, currentStatus);
+            } else {
+                const error = await response.json();
+                alert(`操作失败: ${error.detail || '未知错误'}`);
+            }
+        } catch (error) {
+            console.error('切换项目状态失败:', error);
+            alert('操作失败，请重试');
+        }
+    }
+
+    // 删除项目
+    async function deleteProject(id) {
+        if (!confirm('确定要删除这个项目吗？这将删除所有关联的邀请码！')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/projects/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                loadProjects(currentPage, currentSearch, currentStatus);
+            } else {
+                const error = await response.json();
+                alert(`删除失败: ${error.detail || '未知错误'}`);
+            }
+        } catch (error) {
+            console.error('删除项目失败:', error);
+            alert('删除失败，请重试');
+        }
+    }
+
+    // 搜索框回车事件
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    });
+
+    // 状态筛选变化事件
+    document.getElementById('status-filter').addEventListener('change', () => {
+        handleSearch();
+    });
+
+    // 初始加载
+    loadProjects();
+</script>
+{% endblock %}

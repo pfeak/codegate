@@ -1,0 +1,20 @@
+[
+  {
+    "name": "示例项目1",
+    "description": "这是一个示例项目，用于演示邀请码功能",
+    "expires_at": "2026-12-31T23:59:59",
+    "status": true
+  },
+  {
+    "name": "示例项目2",
+    "description": "另一个示例项目",
+    "expires_at": null,
+    "status": true
+  },
+  {
+    "name": "已过期项目",
+    "description": "这是一个已过期的示例项目",
+    "expires_at": "2025-01-01T00:00:00",
+    "status": false
+  }
+]

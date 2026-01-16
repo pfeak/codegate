@@ -1,8 +1,33 @@
-## codegate
-一个轻量级的 Python 服务，提供邀请码/验证码生成、过期、验证服务 API。既可独立运行，也可嵌入其他系统。  
-A lightweight Python service that provides APIs for generating, expiring, and verifying invitation codes/verification codes. It can run independently or be embedded in other systems.
+# CodeGate
+
+轻量级邀请码管理系统，提供生成、验证、过期管理等功能。
+
+## 功能特性
+
+- 项目管理：创建、更新、查询项目
+- 批量生成邀请码
+- 邀请码验证/核销
+- 自动过期管理
+- Web UI 和 REST API
+
+## 技术栈
+
+- **后端**: FastAPI + SQLite (WAL) + SQLAlchemy
+- **前端**: Jinja2 + Tailwind CSS
+- **工具**: Typer (CLI) + FileLock
+
+## 快速开始
+
+```bash
+# 安装依赖
+uv sync
+
+# 运行服务
+uv run python main.py
+```
+
+服务将在 `http://localhost:8000` 启动。
 
 ## License
-本项目采用 **Apache License 2.0** 许可发布，详见 `LICENSE`。
 
-同时，第三方声明与版权归属信息请参见 `NOTICE`。
+Apache License 2.0 - 详见 [LICENSE](LICENSE) 和 [NOTICE](NOTICE)

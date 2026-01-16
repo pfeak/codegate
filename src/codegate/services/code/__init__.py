@@ -1,5 +1,5 @@
 """
-CodeGate 应用启动入口
+邀请码服务模块
 
 Copyright 2026 pfeak
 
@@ -15,13 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import uvicorn
-from codegate.main import app
+from .code_service import CodeService
+from .code_repository import CodeRepository
 
-if __name__ == "__main__":
-    uvicorn.run(
-        "codegate.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-    )
+__all__ = ["CodeService", "CodeRepository"]

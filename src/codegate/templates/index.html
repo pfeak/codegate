@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - CodeGate{% endblock %}
+
+{% block content %}
+<!--
+页面功能：项目概览 Dashboard
+主要数据绑定：
+- stats: 统计信息对象（项目总数、邀请码总数、已核销数量、过期数量）
+- recent_verifications: 最近核销记录列表
+-->
+<div>
+    <!-- 页面标题 -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">项目概览</h1>
+        <p class="mt-2 text-gray-600">查看系统整体状态和统计数据</p>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <a href="/projects" class="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow cursor-pointer">
+            <div class="text-sm font-medium text-gray-500">项目总数</div>
+            <div class="mt-2 text-2xl font-bold text-gray-900" id="project-count">-</div>
+        </a>
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="text-sm font-medium text-gray-500">邀请码总数</div>
+            <div class="mt-2 text-2xl font-bold text-gray-900" id="code-count">-</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="text-sm font-medium text-gray-500">已核销数量</div>
+            <div class="mt-2 text-2xl font-bold text-gray-900" id="verified-count">-</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="text-sm font-medium text-gray-500">过期数量</div>
+            <div class="mt-2 text-2xl font-bold text-gray-900" id="expired-count">-</div>
+        </div>
+    </div>
+
+    <!-- 快捷操作区 -->
+    <div class="bg-white shadow-sm rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">快捷操作</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="/projects/new"
+                class="flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
+                <i class="fas fa-plus mr-2"></i>
+                <span>创建项目</span>
+            </a>
+            <a href="/codes/generate"
+                class="flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
+                <i class="fas fa-key mr-2"></i>
+                <span>生成邀请码</span>
+            </a>
+            <a href="/verify"
+                class="flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span>核销验证</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 最近核销记录 -->
+    <div class="bg-white shadow-sm rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900">最近核销记录</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">邀请码
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">项目
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">核销时间
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">核销用户
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="recent-verifications" class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // API 请求封装
+    async function apiRequest(method, url, data = null) {
+        const options = {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
+
+        try {
+            const response = await fetch(url, options);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail || '请求失败');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('API 请求错误:', error);
+            throw error;
+        }
+    }
+
+    // 加载统计数据
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/projects?page_size=1');
+            const data = await response.json();
+
+            document.getElementById('project-count').textContent = data.total || 0;
+
+            // 获取邀请码统计（需要遍历所有项目或使用统计API）
+            let totalCodes = 0;
+            let verifiedCodes = 0;
+            let expiredCodes = 0;
+
+            // 获取所有项目进行统计
+            const allProjectsResponse = await fetch('/api/projects?page_size=1000');
+            const allProjectsData = await allProjectsResponse.json();
+
+            for (const project of allProjectsData.items) {
+                try {
+                    const statsResponse = await fetch(`/api/projects/${project.id}/stats`);
+                    if (statsResponse.ok) {
+                        const stats = await statsResponse.json();
+                        totalCodes += stats.total || 0;
+                        verifiedCodes += stats.verified || 0;
+                        expiredCodes += stats.expired || 0;
+                    }
+                } catch (e) {
+                    console.warn(`获取项目 ${project.id} 统计失败:`, e);
+                }
+            }
+
+            document.getElementById('code-count').textContent = totalCodes.toLocaleString();
+            document.getElementById('verified-count').textContent = verifiedCodes.toLocaleString();
+            document.getElementById('expired-count').textContent = expiredCodes.toLocaleString();
+        } catch (error) {
+            console.error('加载统计数据失败:', error);
+            document.getElementById('project-count').textContent = '0';
+            document.getElementById('code-count').textContent = '0';
+            document.getElementById('verified-count').textContent = '0';
+            document.getElementById('expired-count').textContent = '0';
+        }
+    }
+
+    // 加载最近核销记录
+    async function loadRecentVerifications() {
+        try {
+            // 尝试从 localStorage 获取最近记录
+            const recentLogs = JSON.parse(localStorage.getItem('recent_verify_logs') || '[]');
+            const tbody = document.getElementById('recent-verifications');
+
+            if (recentLogs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">暂无记录</td></tr>';
+                return;
+            }
+
+            // 只显示成功的核销记录
+            const successLogs = recentLogs.filter(log => log.success).slice(0, 10);
+
+            if (successLogs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">暂无记录</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = successLogs.map(log => {
+                const verifiedAt = log.time
+                    ? new Date(log.time).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                    : '-';
+
+                return `
+                <tr class="hover:bg-gray-50 cursor-pointer">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">${log.code}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.project_name || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${verifiedAt}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.verified_by || '-'}</td>
+                </tr>
+            `;
+            }).join('');
+        } catch (error) {
+            console.error('加载最近核销记录失败:', error);
+        }
+    }
+
+    // 初始化
+    loadStats();
+    loadRecentVerifications();
+</script>
+{% endblock %}

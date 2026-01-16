@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}生成邀请码 - CodeGate{% endblock %}
+
+{% block content %}
+<!--
+页面功能：批量生成邀请码页
+主要数据绑定：
+- project: 项目对象（从URL参数获取project_id）
+- generated_codes: 生成的邀请码数组（生成后显示）
+-->
+<div class="max-w-2xl mx-auto">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">批量生成邀请码</h1>
+        <p class="text-gray-600 mt-1">项目: <span id="project-name">加载中...</span></p>
+    </div>
+
+    <div class="bg-white shadow-sm rounded-lg p-6">
+        <form id="generate-form" onsubmit="return generateCodes(event)">
+            <div class="mb-4">
+                <label for="count" class="block text-sm font-medium text-gray-700 mb-2">生成数量 *</label>
+                <input type="number" id="count" name="count" min="1" max="10000" value="100" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <p class="mt-1 text-sm text-gray-500">1-10000 个，一次最多生成 10000 个</p>
+            </div>
+
+            <div class="mb-4">
+                <label for="length" class="block text-sm font-medium text-gray-700 mb-2">邀请码长度</label>
+                <input type="number" id="length" name="length" min="8" max="16" value="12"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <p class="mt-1 text-sm text-gray-500">8-16 位，默认 12 位（不包括前缀和后缀）</p>
+            </div>
+
+            <div class="mb-4">
+                <label for="prefix" class="block text-sm font-medium text-gray-700 mb-2">前缀（可选）</label>
+                <input type="text" id="prefix" name="prefix" maxlength="10"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <p class="mt-1 text-sm text-gray-500">最大 10 字符</p>
+            </div>
+
+            <div class="mb-4">
+                <label for="suffix" class="block text-sm font-medium text-gray-700 mb-2">后缀（可选）</label>
+                <input type="text" id="suffix" name="suffix" maxlength="10"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <p class="mt-1 text-sm text-gray-500">最大 10 字符</p>
+            </div>
+
+            <div class="flex justify-end space-x-4">
+                <a href="/projects"
+                    class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+                    取消
+                </a>
+                <button type="submit" id="generate-btn"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors">
+                    <i class="fas fa-magic mr-2"></i>生成
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 生成结果区域 -->
+    <div id="result-container" class="hidden mt-6">
+        <div class="bg-white shadow-sm rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-900">生成结果</h2>
+                <div class="flex space-x-3">
+                    <button onclick="copyAllCodes()"
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors">
+                        <i class="fas fa-copy mr-2"></i>复制全部
+                    </button>
+                    <button onclick="exportCSV()"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors">
+                        <i class="fas fa-download mr-2"></i>导出 CSV
+                    </button>
+                    <button onclick="exportJSON()"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+                        <i class="fas fa-download mr-2"></i>导出 JSON
+                    </button>
+                </div>
+            </div>
+            <div id="result-message" class="text-gray-600 mb-4"></div>
+            <div id="codes-list" class="max-h-96 overflow-y-auto border border-gray-200 rounded-md p-4">
+                <!-- 邀请码列表将在这里显示 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // API 请求封装
+    async function apiRequest(method, url, data = null) {
+        const options = {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
+
+        try {
+            const response = await fetch(url, options);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail || '请求失败');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('API 请求错误:', error);
+            throw error;
+        }
+    }
+
+    // 从 URL 获取项目 ID
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('project_id');
+    let generatedCodes = [];
+
+    if (!projectId) {
+        document.body.innerHTML = '<div class="p-6 text-center text-red-600">缺少项目ID参数</div>';
+    } else {
+        loadProject();
+    }
+
+    async function loadProject() {
+        try {
+            const project = await apiRequest('GET', `/api/projects/${projectId}`);
+            document.getElementById('project-name').textContent = project.name;
+        } catch (error) {
+            console.error('加载项目信息失败:', error);
+            alert('加载项目信息失败');
+        }
+    }
+
+    async function generateCodes(event) {
+        event.preventDefault();
+
+        const generateBtn = document.getElementById('generate-btn');
+        const originalText = generateBtn.innerHTML;
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>生成中...';
+
+        const formData = {
+            count: parseInt(document.getElementById('count').value),
+            length: parseInt(document.getElementById('length').value) || undefined,
+            prefix: document.getElementById('prefix').value.trim() || undefined,
+            suffix: document.getElementById('suffix').value.trim() || undefined,
+        };
+
+        try {
+            generatedCodes = await apiRequest('POST', `/api/projects/${projectId}/codes/generate`, formData);
+
+            document.getElementById('result-container').classList.remove('hidden');
+            document.getElementById('result-message').innerHTML = `
+            <p class="text-green-600 font-semibold mb-2">成功生成 ${generatedCodes.length} 个邀请码！</p>
+            <a href="/projects/${projectId}" class="text-indigo-600 hover:text-indigo-800">查看邀请码列表 →</a>
+        `;
+
+            // 显示邀请码列表
+            const codesList = document.getElementById('codes-list');
+            codesList.innerHTML = '<div class="font-mono text-sm space-y-1">' +
+                generatedCodes.map(code => `<div>${code}</div>`).join('') +
+                '</div>';
+        } catch (error) {
+            console.error('生成邀请码失败:', error);
+            alert(`生成失败: ${error.message || '未知错误'}`);
+        } finally {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = originalText;
+        }
+
+        return false;
+    }
+
+    // 复制全部邀请码
+    async function copyAllCodes() {
+        if (generatedCodes.length === 0) return;
+
+        try {
+            await navigator.clipboard.writeText(generatedCodes.join('\n'));
+            alert('已复制到剪贴板');
+        } catch (error) {
+            console.error('复制失败:', error);
+            alert('复制失败');
+        }
+    }
+
+    // 导出 CSV
+    function exportCSV() {
+        if (generatedCodes.length === 0) return;
+
+        const csv = ['邀请码'].concat(generatedCodes).join('\n');
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `invitation_codes_${projectId}_${new Date().getTime()}.csv`;
+        link.click();
+    }
+
+    // 导出 JSON
+    function exportJSON() {
+        if (generatedCodes.length === 0) return;
+
+        const json = JSON.stringify(generatedCodes, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `invitation_codes_${projectId}_${new Date().getTime()}.json`;
+        link.click();
+    }
+</script>
+{% endblock %}

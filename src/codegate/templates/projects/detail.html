@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block title %}项目详情 - CodeGate{% endblock %}
+
+{% block content %}
+<!--
+页面功能：项目详情页
+主要数据绑定：
+- project: 项目对象
+- codes: 邀请码列表（分页数据）
+- stats: 统计信息对象
+-->
+<div>
+    <!-- 面包屑导航 -->
+    <nav class="mb-6" aria-label="Breadcrumb">
+        <ol class="flex items-center space-x-2 text-sm text-gray-500">
+            <li><a href="/" class="hover:text-gray-700">首页</a></li>
+            <li><i class="fas fa-chevron-right text-xs"></i></li>
+            <li><a href="/projects" class="hover:text-gray-700">项目管理</a></li>
+            <li><i class="fas fa-chevron-right text-xs"></i></li>
+            <li class="text-gray-900 font-medium" id="breadcrumb-project-name">项目详情</li>
+        </ol>
+    </nav>
+
+    <!-- 项目基本信息卡片 -->
+    <div class="bg-white shadow-sm rounded-lg p-6 mb-6">
+        <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2" id="project-name">加载中...</h1>
+                <p class="text-gray-600" id="project-description"></p>
+            </div>
+            <div class="flex space-x-3 ml-4">
+                <a href="/projects/{{ project_id }}/edit"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors">
+                    <i class="fas fa-edit mr-2"></i>编辑
+                </a>
+                <button onclick="deleteProject()"
+                    class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors">
+                    <i class="fas fa-trash mr-2"></i>删除
+                </button>
+                <button onclick="toggleStatus()"
+                    class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors">
+                    <i class="fas fa-toggle-on mr-2"></i>切换状态
+                </button>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
+            <div>
+                <div class="text-sm text-gray-500">创建时间</div>
+                <div class="text-sm font-medium text-gray-900 mt-1" id="project-created-at">-</div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-500">有效期</div>
+                <div class="text-sm font-medium text-gray-900 mt-1" id="project-expires-at">-</div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-500">状态</div>
+                <div class="mt-1" id="project-status">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计信息卡片 -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="text-sm font-medium text-gray-500">总邀请码</div>
+            <div class="mt-2 text-2xl font-bold text-gray-900" id="total-codes">-</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="text-sm font-medium text-gray-500">已核销</div>
+            <div class="mt-2 text-2xl font-bold text-gray-900" id="verified-codes">-</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="text-sm font-medium text-gray-500">未核销</div>
+            <div class="mt-2 text-2xl font-bold text-gray-900" id="unverified-codes">-</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="text-sm font-medium text-gray-500">已过期</div>
+            <div class="mt-2 text-2xl font-bold text-gray-900" id="expired-codes">-</div>
+        </div>
+    </div>
+
+    <!-- 邀请码管理区域 -->
+    <div class="bg-white shadow-sm rounded-lg overflow-hidden mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-900">邀请码管理</h2>
+                <div class="flex space-x-3">
+                    <button onclick="showGenerateModal()"
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors">
+                        <i class="fas fa-plus mr-2"></i>批量生成
+                    </button>
+                    <button onclick="exportCodes()"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors">
+                        <i class="fas fa-download mr-2"></i>导出
+                    </button>
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <input type="text" id="code-search" placeholder="搜索邀请码..."
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <select id="code-status-filter"
+                    class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">全部状态</option>
+                    <option value="true">已核销</option>
+                    <option value="false">未核销</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">邀请码
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">核销时间
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">核销用户
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="codes-table" class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页组件 -->
+        <div class="px-4 py-3 bg-white border-t border-gray-200 flex items-center justify-between">
+            <div class="text-sm text-gray-700">
+                共 <span id="code-total-count">0</span> 个邀请码
+            </div>
+            <div class="flex items-center space-x-2" id="code-pagination">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 生成邀请码模态框 -->
+<div id="generate-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">批量生成邀请码</h3>
+            <form id="generate-form" onsubmit="return generateCodes(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">生成数量 *</label>
+                    <input type="number" id="generate-count" name="count" min="1" max="10000" value="100" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">邀请码长度</label>
+                    <input type="number" id="generate-length" name="length" min="8" max="16" value="12"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <p class="mt-1 text-sm text-gray-500">8-16 位，默认 12 位</p>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">前缀（可选）</label>
+                    <input type="text" id="generate-prefix" name="prefix" maxlength="10"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">后缀（可选）</label>
+                    <input type="text" id="generate-suffix" name="suffix" maxlength="10"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="hideGenerateModal()"
+                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+                        取消
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors">
+                        生成
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // API 请求封装
+    async function apiRequest(method, url, data = null) {
+        const options = {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
+
+        try {
+            const response = await fetch(url, options);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail || '请求失败');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('API 请求错误:', error);
+            throw error;
+        }
+    }
+
+    // 格式化日期时间
+    function formatDateTime(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+    }
+
+    const projectId = {{ project_id }};
+    let currentCodePage = 1;
+    const codePageSize = 50;
+    let currentCodeSearch = '';
+    let currentCodeStatus = '';
+
+    // 加载项目详情
+    async function loadProject() {
+        try {
+            const response = await fetch(`/api/projects/${projectId}`);
+            const project = await response.json();
+
+            document.getElementById('project-name').textContent = project.name;
+            document.getElementById('breadcrumb-project-name').textContent = project.name;
+            document.getElementById('project-description').textContent = project.description || '无描述';
+            document.getElementById('project-created-at').textContent = formatDateTime(project.created_at);
+            document.getElementById('project-expires-at').textContent = project.expires_at
+                ? formatDateTime(project.expires_at)
+                : '永久有效';
+
+            // 状态 Badge
+            const statusBadge = project.status
+                ? '<span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">启用</span>'
+                : '<span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">禁用</span>';
+            document.getElementById('project-status').innerHTML = statusBadge;
+
+            // 加载统计信息
+            try {
+                const statsResponse = await fetch(`/api/projects/${projectId}/stats`);
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    document.getElementById('total-codes').textContent = (stats.total || 0).toLocaleString();
+                    document.getElementById('verified-codes').textContent = (stats.verified || 0).toLocaleString();
+                    document.getElementById('unverified-codes').textContent = (stats.unverified || 0).toLocaleString();
+                    document.getElementById('expired-codes').textContent = (stats.expired || 0).toLocaleString();
+                }
+            } catch (e) {
+                console.warn('获取统计信息失败:', e);
+            }
+        } catch (error) {
+            console.error('加载项目详情失败:', error);
+        }
+    }
+
+    // 加载邀请码列表
+    async function loadCodes(page = 1, search = '', status = '') {
+        try {
+            const params = new URLSearchParams({
+                page: page.toString(),
+                page_size: codePageSize.toString(),
+            });
+            if (search) {
+                params.append('search', search);
+            }
+            if (status) {
+                params.append('status', status);
+            }
+
+            const response = await fetch(`/api/projects/${projectId}/codes?${params}`);
+            const data = await response.json();
+
+            const tbody = document.getElementById('codes-table');
+            document.getElementById('code-total-count').textContent = data.total;
+
+            if (data.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-gray-500">暂无邀请码</td></tr>';
+                updateCodePagination(data.total, page);
+                return;
+            }
+
+            tbody.innerHTML = data.items.map(code => {
+                // 状态判断：is_expired=true → 已过期，status=true → 已核销，否则 → 未核销
+                let statusBadge;
+                if (code.is_expired) {
+                    statusBadge = '<span class="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">已过期</span>';
+                } else if (code.status) {
+                    statusBadge = '<span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">已核销</span>';
+                } else {
+                    statusBadge = '<span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">未核销</span>';
+                }
+
+                const verifiedAt = code.verified_at ? formatDateTime(code.verified_at) : '-';
+                const createdAt = formatDateTime(code.created_at);
+
+                return `
+                <tr class="border-b border-gray-200 hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${code.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 cursor-pointer" onclick="copyToClipboard('${code.code}')" title="点击复制">${code.code}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${verifiedAt}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${code.verified_by || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${createdAt}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button onclick="deleteCode(${code.id})" class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash mr-1"></i>删除
+                        </button>
+                    </td>
+                </tr>
+            `;
+            }).join('');
+
+            // 更新分页
+            updateCodePagination(data.total, page);
+            currentCodePage = page;
+            currentCodeSearch = search;
+            currentCodeStatus = status;
+        } catch (error) {
+            console.error('加载邀请码列表失败:', error);
+        }
+    }
+
+    // 复制到剪贴板
+    async function copyToClipboard(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            // 可以添加一个提示
+            alert('已复制到剪贴板');
+        } catch (error) {
+            console.error('复制失败:', error);
+        }
+    }
+
+    function updateCodePagination(total, page) {
+        const totalPages = Math.ceil(total / codePageSize);
+        const pagination = document.getElementById('code-pagination');
+
+        if (totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+
+        let html = `<span class="text-sm text-gray-700 mr-4">第 ${page} 页，共 ${totalPages} 页</span>`;
+
+        if (page > 1) {
+            html += `<button onclick="loadCodes(${page - 1}, '${currentCodeSearch}', '${currentCodeStatus}')" 
+                 class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">上一页</button>`;
+        } else {
+            html += `<button disabled class="px-3 py-2 text-sm border border-gray-300 rounded-md opacity-50 cursor-not-allowed">上一页</button>`;
+        }
+
+        const startPage = Math.max(1, page - 2);
+        const endPage = Math.min(totalPages, page + 2);
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button onclick="loadCodes(${i}, '${currentCodeSearch}', '${currentCodeStatus}')" 
+                 class="px-3 py-2 text-sm border border-gray-300 rounded-md transition-colors ${i === page ? 'bg-indigo-600 text-white' : 'hover:bg-gray-50'}">${i}</button>`;
+        }
+
+        if (page < totalPages) {
+            html += `<button onclick="loadCodes(${page + 1}, '${currentCodeSearch}', '${currentCodeStatus}')" 
+                 class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">下一页</button>`;
+        } else {
+            html += `<button disabled class="px-3 py-2 text-sm border border-gray-300 rounded-md opacity-50 cursor-not-allowed">下一页</button>`;
+        }
+
+        pagination.innerHTML = html;
+    }
+
+    async function deleteCode(codeId) {
+        if (!confirm('确定要删除这个邀请码吗？')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/codes/${codeId}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                alert('删除成功');
+                loadCodes(currentCodePage);
+                loadProject(); // 刷新统计
+            } else {
+                alert('删除失败');
+            }
+        } catch (error) {
+            console.error('删除邀请码失败:', error);
+            alert('删除失败');
+        }
+    }
+
+    function showGenerateModal() {
+        document.getElementById('generate-modal').classList.remove('hidden');
+    }
+
+    function hideGenerateModal() {
+        document.getElementById('generate-modal').classList.add('hidden');
+    }
+
+    async function generateCodes(event) {
+        event.preventDefault();
+
+        const formData = {
+            count: parseInt(document.getElementById('generate-count').value),
+            length: parseInt(document.getElementById('generate-length').value) || undefined,
+            prefix: document.getElementById('generate-prefix').value || undefined,
+            suffix: document.getElementById('generate-suffix').value || undefined,
+        };
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/codes/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (response.ok) {
+                alert('生成成功');
+                hideGenerateModal();
+                loadCodes(1);
+                loadProject(); // 刷新统计
+            } else {
+                const error = await response.json();
+                alert(`生成失败: ${error.detail || '未知错误'}`);
+            }
+        } catch (error) {
+            console.error('生成邀请码失败:', error);
+            alert('生成失败，请重试');
+        }
+
+        return false;
+    }
+
+    async function toggleStatus() {
+        try {
+            const project = await apiRequest('GET', `/api/projects/${projectId}`);
+            const newStatus = !project.status;
+
+            await apiRequest('PUT', `/api/projects/${projectId}`, { ...project, status: newStatus });
+            alert('状态切换成功');
+            loadProject();
+        } catch (error) {
+            console.error('切换状态失败:', error);
+            alert('切换状态失败');
+        }
+    }
+
+    async function deleteProject() {
+        if (!confirm('确定要删除这个项目吗？这将删除所有关联的邀请码！')) {
+            return;
+        }
+
+        try {
+            await apiRequest('DELETE', `/api/projects/${projectId}`);
+            alert('删除成功');
+            window.location.href = '/projects';
+        } catch (error) {
+            console.error('删除项目失败:', error);
+            alert('删除失败');
+        }
+    }
+
+    async function exportCodes() {
+        try {
+            const response = await fetch(`/api/projects/${projectId}/codes?page_size=10000`);
+            const data = await response.json();
+
+            // 转换为 CSV
+            const csv = [
+                ['邀请码', '状态', '核销时间', '核销用户', '创建时间'].join(','),
+                ...data.items.map(code => [
+                    code.code,
+                    code.status ? '已核销' : '未核销',
+                    code.verified_at || '',
+                    code.verified_by || '',
+                    code.created_at,
+                ].join(','))
+            ].join('\n');
+
+            // 下载文件
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `invitation_codes_${projectId}_${new Date().getTime()}.csv`;
+            link.click();
+        } catch (error) {
+            console.error('导出失败:', error);
+            alert('导出失败');
+        }
+    }
+
+    // 搜索功能
+    document.getElementById('code-search').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleCodeSearch();
+        }
+    });
+
+    document.getElementById('code-status-filter').addEventListener('change', () => {
+        handleCodeSearch();
+    });
+
+    function handleCodeSearch() {
+        const search = document.getElementById('code-search').value.trim();
+        const status = document.getElementById('code-status-filter').value;
+        loadCodes(1, search, status);
+    }
+
+    // 初始加载
+    loadProject();
+    loadCodes();
+</script>
+{% endblock %}

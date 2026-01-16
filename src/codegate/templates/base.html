@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CodeGate - 邀请码核销平台{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- 左侧导航栏 -->
+        <aside id="sidebar"
+            class="hidden lg:block fixed lg:sticky top-0 w-64 h-screen bg-white border-r border-gray-200 flex flex-col z-40">
+            <!-- Logo/标题区域 -->
+            <div class="h-16 px-4 py-4 flex items-center border-b border-gray-200">
+                <a href="/" class="text-xl font-bold text-indigo-600">CodeGate</a>
+            </div>
+
+            <!-- 导航项 -->
+            <nav class="flex-1 overflow-y-auto py-4">
+                <a href="/"
+                    class="nav-item flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                    data-path="/">
+                    <i class="fas fa-home w-5 h-5 mr-3"></i>
+                    <span class="text-sm font-medium">首页</span>
+                </a>
+                <a href="/projects"
+                    class="nav-item flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                    data-path="/projects">
+                    <i class="fas fa-folder w-5 h-5 mr-3"></i>
+                    <span class="text-sm font-medium">项目管理</span>
+                </a>
+                <a href="/verify"
+                    class="nav-item flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                    data-path="/verify">
+                    <i class="fas fa-check-circle w-5 h-5 mr-3"></i>
+                    <span class="text-sm font-medium">核销验证</span>
+                </a>
+                <a href="/docs"
+                    class="nav-item flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                    data-path="/docs">
+                    <i class="fas fa-book w-5 h-5 mr-3"></i>
+                    <span class="text-sm font-medium">API 文档</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- 移动端遮罩层 -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-30 lg:hidden hidden"></div>
+
+        <!-- 右侧内容区 -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- 移动端顶部导航栏 -->
+            <div
+                class="lg:hidden bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                <a href="/" class="text-xl font-bold text-indigo-600">CodeGate</a>
+                <button id="mobile-menu-button" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+
+            <!-- 主内容区域 -->
+            <div class="flex-1 overflow-y-auto bg-gray-50">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+
+            <!-- 页脚 -->
+            <footer class="bg-white border-t px-4 sm:px-6 lg:px-8 py-4">
+                <p class="text-center text-gray-500 text-sm">
+                    © 2026 CodeGate. Licensed under Apache License 2.0.
+                </p>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        // 移动端菜单切换
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+        if (mobileMenuButton) {
+            mobileMenuButton.addEventListener('click', () => {
+                sidebar.classList.toggle('hidden');
+                sidebarOverlay.classList.toggle('hidden');
+            });
+        }
+
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.add('hidden');
+                sidebarOverlay.classList.add('hidden');
+            });
+        }
+
+        // 高亮当前导航项
+        const currentPath = window.location.pathname;
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            const itemPath = item.getAttribute('data-path');
+            if (currentPath === itemPath || (itemPath !== '/' && currentPath.startsWith(itemPath))) {
+                item.classList.add('bg-indigo-50', 'text-indigo-600', 'border-r-2', 'border-indigo-600');
+                item.classList.remove('text-gray-700', 'hover:bg-gray-100', 'hover:text-gray-900');
+            }
+        });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>
