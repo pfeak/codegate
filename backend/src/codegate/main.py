@@ -15,12 +15,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
+from fastapi.responses import HTMLResponse
 import logging
 
 from .config import settings
@@ -61,24 +58,6 @@ app.include_router(codes.router)
 app.include_router(codes.router_standalone)  # 独立的激活码API路由
 app.include_router(verify.router)
 
-# 静态文件和模板
-try:
-    # 获取模板目录
-    templates_path = Path(__file__).parent / "templates"
-    if templates_path.exists():
-        templates = Jinja2Templates(directory=str(templates_path))
-
-        # 静态文件目录
-        static_path = Path(__file__).parent / "static"
-        if static_path.exists():
-            app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
-    else:
-        templates = None
-        logger.warning("模板目录不存在，Web 界面将不可用")
-except Exception as e:
-    logger.warning(f"无法加载模板和静态文件: {e}")
-    templates = None
-
 
 @app.on_event("startup")
 async def startup_event():
@@ -89,69 +68,14 @@ async def startup_event():
     logger.info("数据库初始化完成")
 
 
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    """登录页面"""
-    if templates:
-        return templates.TemplateResponse("login.html", {"request": request})
-    return RedirectResponse(url="/docs")
-
-
-@app.get("/change-password", response_class=HTMLResponse)
-async def change_password_page(request: Request):
-    """首次登录修改密码页面"""
-    if templates:
-        return templates.TemplateResponse("change_password.html", {"request": request})
-    return RedirectResponse(url="/docs")
-
-
-@app.get("/profile", response_class=HTMLResponse)
-async def profile_page(request: Request):
-    """个人管理页面"""
-    if templates:
-        return templates.TemplateResponse("profile.html", {"request": request})
-    return RedirectResponse(url="/docs")
-
-
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """首页"""
-    if templates:
-        return templates.TemplateResponse("index.html", {"request": request})
-    return HTMLResponse("<h1>CodeGate API</h1><p>请访问 <a href='/docs'>/docs</a> 查看 API 文档</p>")
-
-
-@app.get("/projects", response_class=HTMLResponse)
-async def projects_list(request: Request):
-    """项目列表页面"""
-    if templates:
-        return templates.TemplateResponse("projects/list.html", {"request": request})
-    return RedirectResponse(url="/docs")
-
-
-# 移除独立的创建项目页面，改为弹框创建
-# @app.get("/projects/new", response_class=HTMLResponse)
-# async def project_new(request: Request):
-#     """创建项目页面"""
-#     if templates:
-#         return templates.TemplateResponse("projects/form.html", {"request": request, "project_id": None})
-#     return RedirectResponse(url="/docs")
-
-
-@app.get("/projects/{project_id}", response_class=HTMLResponse)
-async def project_detail(request: Request, project_id: str):
-    """项目详情页面"""
-    if templates:
-        return templates.TemplateResponse("projects/detail.html", {"request": request, "project_id": project_id})
-    return RedirectResponse(url="/docs")
-
-
-@app.get("/verify", response_class=HTMLResponse)
-async def verify_page(request: Request):
-    """核销验证页面"""
-    if templates:
-        return templates.TemplateResponse("verify/form.html", {"request": request})
-    return RedirectResponse(url="/docs")
+@app.get("/")
+async def index():
+    """API 首页"""
+    return HTMLResponse(
+        "<h1>CodeGate API</h1>"
+        "<p>请访问 <a href='/docs'>/docs</a> 查看 API 文档</p>"
+        "<p>前端应用请访问前端服务器地址</p>"
+    )
 
 
 @app.get("/health")
