@@ -1,5 +1,5 @@
 """
-数据库模型模块
+认证服务模块
 
 Copyright 2026 pfeak
 
@@ -15,9 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from .project import Project
-from .invitation_code import InvitationCode
-from .verification_log import VerificationLog
-from .admin import Admin
+from .auth_service import AuthService
+from .auth_repository import AuthRepository
 
-__all__ = ["Project", "InvitationCode", "VerificationLog", "Admin"]
+__all__ = ["AuthService", "AuthRepository"]

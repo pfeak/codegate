@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from typing import Optional
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from ...models.project import Project
@@ -47,16 +48,21 @@ class ProjectService:
         if existing:
             raise ProjectAlreadyExistsError(project_data.name)
 
+        # 转换时间戳为datetime
+        expires_at = None
+        if project_data.expires_at is not None:
+            expires_at = datetime.utcfromtimestamp(project_data.expires_at)
+
         project = Project(
             name=project_data.name,
             description=project_data.description,
-            expires_at=project_data.expires_at,
+            expires_at=expires_at,
             status=True,
         )
         return ProjectRepository.create(db, project)
 
     @staticmethod
-    def get_by_id(db: Session, project_id: int) -> Optional[Project]:
+    def get_by_id(db: Session, project_id: str) -> Optional[Project]:
         """
         根据ID获取项目
 
@@ -93,7 +99,7 @@ class ProjectService:
         return ProjectRepository.get_list(db, page, page_size, search, status)
 
     @staticmethod
-    def update(db: Session, project_id: int, project_data: ProjectUpdate) -> Optional[Project]:
+    def update(db: Session, project_id: str, project_data: ProjectUpdate) -> Optional[Project]:
         """
         更新项目
 
@@ -121,14 +127,15 @@ class ProjectService:
         if project_data.description is not None:
             project.description = project_data.description
         if project_data.expires_at is not None:
-            project.expires_at = project_data.expires_at
+            # 转换时间戳为datetime
+            project.expires_at = datetime.utcfromtimestamp(project_data.expires_at)
         if project_data.status is not None:
             project.status = project_data.status
 
         return ProjectRepository.update(db, project)
 
     @staticmethod
-    def delete(db: Session, project_id: int) -> bool:
+    def delete(db: Session, project_id: str) -> bool:
         """
         删除项目
 
@@ -148,25 +155,3 @@ class ProjectService:
 
         ProjectRepository.delete(db, project)
         return True
-
-    @staticmethod
-    def toggle_status(db: Session, project_id: int) -> Optional[Project]:
-        """
-        切换项目状态
-
-        Args:
-            db: 数据库会话
-            project_id: 项目ID
-
-        Returns:
-            Optional[Project]: 更新后的项目，不存在返回 None
-
-        Raises:
-            ProjectNotFoundError: 项目不存在
-        """
-        project = ProjectRepository.get_by_id(db, project_id)
-        if not project:
-            raise ProjectNotFoundError(project_id)
-
-        project.status = not project.status
-        return ProjectRepository.update(db, project)

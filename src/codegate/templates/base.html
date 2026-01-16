@@ -4,9 +4,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}CodeGate - 邀请码核销平台{% endblock %}</title>
+    <title>{% block title %}CodeGate - 激活码核销平台{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes slide-in-right {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fade-out-right {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .animate-slide-in-right {
+            animation: slide-in-right 0.3s ease-out;
+        }
+
+        .animate-fade-out-right {
+            animation: fade-out-right 0.3s ease-in;
+        }
+    </style>
+    <script src="/static/js/components.js"></script>
     {% block extra_head %}{% endblock %}
 </head>
 
@@ -40,13 +74,28 @@
                     <i class="fas fa-check-circle w-5 h-5 mr-3"></i>
                     <span class="text-sm font-medium">核销验证</span>
                 </a>
-                <a href="/docs"
+                <a href="/docs" target="_blank"
                     class="nav-item flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
                     data-path="/docs">
                     <i class="fas fa-book w-5 h-5 mr-3"></i>
                     <span class="text-sm font-medium">API 文档</span>
                 </a>
             </nav>
+
+            <!-- 底部用户信息 -->
+            <div class="border-t border-gray-200 p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-gray-700" id="adminUsernameNav">-</span>
+                    <a href="/profile" class="text-sm text-indigo-600 hover:text-indigo-700">
+                        <i class="fas fa-user-circle"></i>
+                    </a>
+                </div>
+                <button id="logoutButton"
+                    class="w-full text-left text-sm text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-sign-out-alt mr-2"></i>
+                    <span>登出</span>
+                </button>
+            </div>
         </aside>
 
         <!-- 移动端遮罩层 -->
@@ -109,6 +158,58 @@
                 item.classList.remove('text-gray-700', 'hover:bg-gray-100', 'hover:text-gray-900');
             }
         });
+
+        // 检查登录状态并加载用户信息
+        async function checkLoginAndLoadUser() {
+            try {
+                const response = await fetch('/api/auth/me', {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const usernameNav = document.getElementById('adminUsernameNav');
+                    if (usernameNav) {
+                        usernameNav.textContent = data.username;
+                    }
+                } else if (response.status === 401) {
+                    // 未登录，跳转到登录页
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('检查登录状态错误:', error);
+                // 网络错误，跳转到登录页
+                window.location.href = '/login';
+            }
+        }
+
+        // 登出功能
+        const logoutButton = document.getElementById('logoutButton');
+        if (logoutButton) {
+            logoutButton.addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+
+                    if (response.ok) {
+                        Toast.success('已登出');
+                        setTimeout(() => {
+                            window.location.href = '/login';
+                        }, 500);
+                    } else {
+                        Toast.error('登出失败');
+                    }
+                } catch (error) {
+                    console.error('登出错误:', error);
+                    Toast.error('登出失败');
+                }
+            });
+        }
+
+        // 页面加载时检查登录状态
+        checkLoginAndLoadUser();
     </script>
 
     {% block extra_scripts %}{% endblock %}

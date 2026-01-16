@@ -17,5 +17,6 @@ limitations under the License.
 """
 from .code_generator import generate_codes
 from .validators import validate_code_format
+from .uuid_utils import generate_uuid, format_uuid_display, is_valid_uuid
 
-__all__ = ["generate_codes", "validate_code_format"]
+__all__ = ["generate_codes", "validate_code_format", "generate_uuid", "format_uuid_display", "is_valid_uuid"]

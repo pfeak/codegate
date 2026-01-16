@@ -26,10 +26,10 @@ def validate_code_format(
     allowed_chars: Optional[str] = None,
 ) -> bool:
     """
-    验证邀请码格式
+    验证激活码格式
     
     Args:
-        code: 邀请码字符串
+        code: 激活码字符串
         min_length: 最小长度
         max_length: 最大长度
         allowed_chars: 允许的字符集（正则表达式），默认允许字母数字

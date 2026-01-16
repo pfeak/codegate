@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}生成邀请码 - CodeGate{% endblock %}
+{% block title %}生成激活码 - CodeGate{% endblock %}
 
 {% block content %}
 <!--
-页面功能：批量生成邀请码页
+页面功能：批量生成激活码页
 主要数据绑定：
 - project: 项目对象（从URL参数获取project_id）
-- generated_codes: 生成的邀请码数组（生成后显示）
+- generated_codes: 生成的激活码数组（生成后显示）
 -->
 <div class="max-w-2xl mx-auto">
     <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">批量生成邀请码</h1>
+        <h1 class="text-3xl font-bold text-gray-900">批量生成激活码</h1>
         <p class="text-gray-600 mt-1">项目: <span id="project-name">加载中...</span></p>
     </div>
 
@@ -25,7 +25,7 @@
             </div>
 
             <div class="mb-4">
-                <label for="length" class="block text-sm font-medium text-gray-700 mb-2">邀请码长度</label>
+                <label for="length" class="block text-sm font-medium text-gray-700 mb-2">激活码长度</label>
                 <input type="number" id="length" name="length" min="8" max="16" value="12"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <p class="mt-1 text-sm text-gray-500">8-16 位，默认 12 位（不包括前缀和后缀）</p>
@@ -68,19 +68,11 @@
                         class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors">
                         <i class="fas fa-copy mr-2"></i>复制全部
                     </button>
-                    <button onclick="exportCSV()"
-                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors">
-                        <i class="fas fa-download mr-2"></i>导出 CSV
-                    </button>
-                    <button onclick="exportJSON()"
-                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
-                        <i class="fas fa-download mr-2"></i>导出 JSON
-                    </button>
                 </div>
             </div>
             <div id="result-message" class="text-gray-600 mb-4"></div>
             <div id="codes-list" class="max-h-96 overflow-y-auto border border-gray-200 rounded-md p-4">
-                <!-- 邀请码列表将在这里显示 -->
+                <!-- 激活码列表将在这里显示 -->
             </div>
         </div>
     </div>
@@ -94,7 +86,8 @@
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
-            }
+            },
+            credentials: 'include'
         };
 
         if (data) {
@@ -103,6 +96,13 @@
 
         try {
             const response = await fetch(url, options);
+
+            // 处理 401 未认证
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
             const result = await response.json();
 
             if (!response.ok) {
@@ -133,7 +133,7 @@
             document.getElementById('project-name').textContent = project.name;
         } catch (error) {
             console.error('加载项目信息失败:', error);
-            alert('加载项目信息失败');
+            Toast.error('加载项目信息失败');
         }
     }
 
@@ -157,18 +157,21 @@
 
             document.getElementById('result-container').classList.remove('hidden');
             document.getElementById('result-message').innerHTML = `
-            <p class="text-green-600 font-semibold mb-2">成功生成 ${generatedCodes.length} 个邀请码！</p>
-            <a href="/projects/${projectId}" class="text-indigo-600 hover:text-indigo-800">查看邀请码列表 →</a>
+            <p class="text-green-600 font-semibold mb-2">成功生成 ${generatedCodes.length} 个激活码！</p>
+            <a href="/projects/${projectId}" class="text-indigo-600 hover:text-indigo-800">查看激活码列表 →</a>
         `;
 
-            // 显示邀请码列表
+            // 显示成功 Toast
+            Toast.success(`成功生成 ${generatedCodes.length} 个激活码！`);
+
+            // 显示激活码列表
             const codesList = document.getElementById('codes-list');
             codesList.innerHTML = '<div class="font-mono text-sm space-y-1">' +
                 generatedCodes.map(code => `<div>${code}</div>`).join('') +
                 '</div>';
         } catch (error) {
-            console.error('生成邀请码失败:', error);
-            alert(`生成失败: ${error.message || '未知错误'}`);
+            console.error('生成激活码失败:', error);
+            Toast.error(`生成失败: ${error.message || '未知错误'}`);
         } finally {
             generateBtn.disabled = false;
             generateBtn.innerHTML = originalText;
@@ -177,41 +180,17 @@
         return false;
     }
 
-    // 复制全部邀请码
+    // 复制全部激活码
     async function copyAllCodes() {
         if (generatedCodes.length === 0) return;
 
         try {
             await navigator.clipboard.writeText(generatedCodes.join('\n'));
-            alert('已复制到剪贴板');
+            Toast.success('已复制到剪贴板');
         } catch (error) {
             console.error('复制失败:', error);
-            alert('复制失败');
+            Toast.error('复制失败');
         }
-    }
-
-    // 导出 CSV
-    function exportCSV() {
-        if (generatedCodes.length === 0) return;
-
-        const csv = ['邀请码'].concat(generatedCodes).join('\n');
-        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `invitation_codes_${projectId}_${new Date().getTime()}.csv`;
-        link.click();
-    }
-
-    // 导出 JSON
-    function exportJSON() {
-        if (generatedCodes.length === 0) return;
-
-        const json = JSON.stringify(generatedCodes, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `invitation_codes_${projectId}_${new Date().getTime()}.json`;
-        link.click();
     }
 </script>
 {% endblock %}

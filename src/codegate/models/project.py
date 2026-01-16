@@ -16,17 +16,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Index
+from sqlalchemy import Column, String, DateTime, Boolean, Text, Index, event
 from sqlalchemy.orm import relationship
 
 from ..database import Base
+from ..utils.uuid_utils import generate_uuid
 
 
 class Project(Base):
     """项目模型"""
     __tablename__ = "projects"
 
-    id = Column(Integer, primary_key=True, index=True, comment="项目ID")
+    id = Column(String(32), primary_key=True, index=True, comment="项目ID（UUID，去除连字符）")
     name = Column(String(100), nullable=False, index=True, comment="项目名称")
     description = Column(Text, nullable=True, comment="项目描述")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, comment="创建时间")
@@ -63,7 +64,7 @@ class Project(Base):
         return self.status and not self.is_expired
 
     def get_code_stats(self):
-        """获取邀请码统计信息"""
+        """获取激活码统计信息"""
         codes = self.invitation_codes.all()
         total = len(codes)
         verified = sum(1 for code in codes if code.status)
@@ -76,3 +77,10 @@ class Project(Base):
             "unverified": unverified,
             "expired": expired,
         }
+
+
+@event.listens_for(Project, "before_insert")
+def generate_project_id(mapper, connection, target):
+    """在插入前生成项目ID"""
+    if not target.id:
+        target.id = generate_uuid()

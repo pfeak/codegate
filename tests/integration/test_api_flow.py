@@ -26,7 +26,7 @@ class TestAPIFlow:
     """API 流程集成测试类"""
 
     def test_create_project_and_generate_codes(self):
-        """测试创建项目并生成邀请码的完整流程"""
+        """测试创建项目并生成激活码的完整流程"""
         # 1. 创建项目
         project_data = {
             "name": "集成测试项目",
@@ -37,7 +37,7 @@ class TestAPIFlow:
         project = response.json()
         project_id = project["id"]
 
-        # 2. 生成邀请码
+        # 2. 生成激活码
         code_request = {
             "count": 5,
             "length": 12,
@@ -50,13 +50,13 @@ class TestAPIFlow:
         codes = response.json()
         assert len(codes) == 5
 
-        # 3. 获取邀请码列表
+        # 3. 获取激活码列表
         response = client.get(f"/api/projects/{project_id}/codes")
         assert response.status_code == 200
         code_list = response.json()
         assert code_list["total"] == 5
 
-        # 4. 核销邀请码
+        # 4. 核销激活码
         code = codes[0]["code"]
         verify_request = {
             "code": code,
@@ -67,7 +67,7 @@ class TestAPIFlow:
         verify_result = response.json()
         assert verify_result["success"] is True
 
-        # 5. 再次核销同一邀请码（应该失败）
+        # 5. 再次核销同一激活码（应该失败）
         response = client.post("/api/codes/verify", json=verify_request)
         assert response.status_code == 200
         verify_result = response.json()

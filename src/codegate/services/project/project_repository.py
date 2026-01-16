@@ -43,7 +43,7 @@ class ProjectRepository:
         return project
 
     @staticmethod
-    def get_by_id(db: Session, project_id: int) -> Optional[Project]:
+    def get_by_id(db: Session, project_id: str) -> Optional[Project]:
         """
         根据ID获取项目
 

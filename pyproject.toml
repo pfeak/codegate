@@ -1,7 +1,7 @@
 [project]
 name = "codegate"
 version = "0.1.0"
-description = "一个轻量级的 Python 服务，提供邀请码/验证码生成、过期、验证服务API。既可独立运行，也可嵌入其他系统。 A lightweight Python service that provides APIs for generating, expiring, and verifying invitation codes/verification codes. It can run independently or be embedded in other systems."
+description = "一个轻量级的 Python 服务，提供激活码/邀请码/验证码生成、过期、验证服务API。既可独立运行，也可嵌入其他系统。 A lightweight Python service that provides APIs for generating, expiring, and verifying invitation codes/verification codes. It can run independently or be embedded in other systems."
 readme = "README.md"
 requires-python = ">=3.12.9"
 license = { text = "Apache-2.0" }
@@ -31,6 +31,7 @@ dependencies = [
     "filelock>=3.13.0",
     "typer>=0.9.0",
     "python-dotenv>=1.0.0",
+    "bcrypt>=4.0.0",
 ]
 
 [project.urls]
@@ -43,8 +44,3 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/codegate"]
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-]

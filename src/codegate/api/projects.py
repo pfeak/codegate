@@ -27,7 +27,9 @@ from ..schemas.project import (
     ProjectResponse,
     ProjectListResponse,
 )
+from ..schemas.auth import AdminResponse
 from ..services.project import ProjectService
+from ..api.auth import require_admin
 from ..core.exceptions import (
     ProjectNotFoundError,
     ProjectAlreadyExistsError,
@@ -43,6 +45,7 @@ def get_projects(
     search: Optional[str] = Query(None, description="搜索关键词"),
     status: Optional[bool] = Query(None, description="项目状态"),
     db: Session = Depends(get_db),
+    current_admin: AdminResponse = Depends(require_admin),
 ):
     """
     获取项目列表
@@ -67,6 +70,7 @@ def get_projects(
 def create_project(
     project_data: ProjectCreate,
     db: Session = Depends(get_db),
+    current_admin: AdminResponse = Depends(require_admin),
 ):
     """
     创建项目
@@ -80,8 +84,9 @@ def create_project(
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(
-    project_id: int,
+    project_id: str,
     db: Session = Depends(get_db),
+    current_admin: AdminResponse = Depends(require_admin),
 ):
     """
     获取项目详情
@@ -95,9 +100,10 @@ def get_project(
 
 @router.put("/{project_id}", response_model=ProjectResponse)
 def update_project(
-    project_id: int,
+    project_id: str,
     project_data: ProjectUpdate,
     db: Session = Depends(get_db),
+    current_admin: AdminResponse = Depends(require_admin),
 ):
     """
     更新项目
@@ -113,8 +119,9 @@ def update_project(
 
 @router.delete("/{project_id}", status_code=204)
 def delete_project(
-    project_id: int,
+    project_id: str,
     db: Session = Depends(get_db),
+    current_admin: AdminResponse = Depends(require_admin),
 ):
     """
     删除项目
@@ -123,38 +130,3 @@ def delete_project(
         ProjectService.delete(db=db, project_id=project_id)
     except ProjectNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.post("/{project_id}/toggle-status", response_model=ProjectResponse)
-def toggle_project_status(
-    project_id: int,
-    db: Session = Depends(get_db),
-):
-    """
-    切换项目状态
-    """
-    try:
-        project = ProjectService.toggle_status(db=db, project_id=project_id)
-        return ProjectResponse.model_validate(project)
-    except ProjectNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.get("/{project_id}/stats")
-def get_project_stats(
-    project_id: int,
-    db: Session = Depends(get_db),
-):
-    """
-    获取项目统计信息
-    """
-    project = ProjectService.get_by_id(db=db, project_id=project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="项目不存在")
-
-    stats = project.get_code_stats()
-    return {
-        "project_id": project_id,
-        "project_name": project.name,
-        **stats,
-    }

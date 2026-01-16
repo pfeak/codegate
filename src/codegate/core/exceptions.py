@@ -25,7 +25,7 @@ class CodeGateException(Exception):
 class ProjectNotFoundError(CodeGateException):
     """项目不存在异常"""
 
-    def __init__(self, project_id: int):
+    def __init__(self, project_id: str):
         self.project_id = project_id
         super().__init__(f"项目 {project_id} 不存在")
 
@@ -39,33 +39,41 @@ class ProjectAlreadyExistsError(CodeGateException):
 
 
 class CodeNotFoundError(CodeGateException):
-    """邀请码不存在异常"""
+    """激活码不存在异常"""
 
     def __init__(self, code: str):
         self.code = code
-        super().__init__(f"邀请码 '{code}' 不存在")
+        super().__init__(f"激活码 '{code}' 不存在")
 
 
 class CodeAlreadyVerifiedError(CodeGateException):
-    """邀请码已核销异常"""
+    """激活码已核销异常"""
 
     def __init__(self, code: str):
         self.code = code
-        super().__init__(f"邀请码 '{code}' 已被核销")
+        super().__init__(f"激活码 '{code}' 已被核销")
 
 
 class CodeExpiredError(CodeGateException):
-    """邀请码已过期异常"""
+    """激活码已过期异常"""
 
     def __init__(self, code: str):
         self.code = code
-        super().__init__(f"邀请码 '{code}' 已过期")
+        super().__init__(f"激活码 '{code}' 已过期")
+
+
+class CodeDisabledError(CodeGateException):
+    """激活码已禁用异常"""
+
+    def __init__(self, code: str):
+        self.code = code
+        super().__init__(f"激活码 '{code}' 已禁用")
 
 
 class ProjectDisabledError(CodeGateException):
     """项目已禁用异常"""
 
-    def __init__(self, project_id: int):
+    def __init__(self, project_id: str):
         self.project_id = project_id
         super().__init__(f"项目 {project_id} 已禁用")
 
@@ -73,17 +81,17 @@ class ProjectDisabledError(CodeGateException):
 class ProjectExpiredError(CodeGateException):
     """项目已过期异常"""
 
-    def __init__(self, project_id: int):
+    def __init__(self, project_id: str):
         self.project_id = project_id
         super().__init__(f"项目 {project_id} 已过期")
 
 
 class CodeGenerationError(CodeGateException):
-    """邀请码生成失败异常"""
+    """激活码生成失败异常"""
 
     def __init__(self, message: str):
         self.message = message
-        super().__init__(f"邀请码生成失败: {message}")
+        super().__init__(f"激活码生成失败: {message}")
 
 
 class ValidationError(CodeGateException):
@@ -92,3 +100,11 @@ class ValidationError(CodeGateException):
     def __init__(self, message: str):
         self.message = message
         super().__init__(f"数据验证失败: {message}")
+
+
+class RateLimitExceededError(CodeGateException):
+    """频率限制超过异常"""
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(message)

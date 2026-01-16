@@ -1,5 +1,5 @@
 """
-清理过期邀请码任务
+清理过期激活码任务
 
 Copyright 2026 pfeak
 
@@ -18,7 +18,7 @@ limitations under the License.
 from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 
 from ..database import get_db_context
 from ..models.project import Project
@@ -32,7 +32,7 @@ def cleanup_expired_codes(
     dry_run: bool = False,
 ) -> dict:
     """
-    清理过期项目的邀请码和日志
+    清理过期项目的激活码和日志
 
     Args:
         retention_days: 保留天数（过期项目在过期后保留多少天）
@@ -60,7 +60,7 @@ def cleanup_expired_codes(
         ).all()
 
         for project in expired_projects:
-            # 统计该项目的邀请码和日志数量
+            # 统计该项目的激活码和日志数量
             code_count = db.query(InvitationCode).filter(
                 InvitationCode.project_id == project.id
             ).count()
@@ -70,7 +70,7 @@ def cleanup_expired_codes(
             ).count()
 
             if not dry_run:
-                # 删除项目（级联删除邀请码和日志）
+                # 删除项目（级联删除激活码和日志）
                 db.delete(project)
                 db.commit()
 
@@ -81,11 +81,97 @@ def cleanup_expired_codes(
     return stats
 
 
+def update_expired_status(dry_run: bool = False) -> dict:
+    """
+    更新激活码的过期状态（定时任务）
+
+    根据设计文档 code_status_logic.md 的要求：
+    - 定时任务自动更新：定时任务（如每小时）检查所有激活码
+    - 如果 expires_at 已过且 is_expired=False，则设置 is_expired=True
+    - 如果 expires_at 未到且 is_expired=True（可能被延长），则设置 is_expired=False
+
+    Args:
+        dry_run: 是否仅模拟运行（不实际更新）
+
+    Returns:
+        dict: 更新统计信息
+    """
+    now = datetime.utcnow()
+    stats = {
+        "expired_updated": 0,
+        "unexpired_updated": 0,
+        "dry_run": dry_run,
+    }
+
+    with get_db_context() as db:
+        # 查找所有需要更新过期状态的激活码
+        # 1. 已过期但 is_expired=False 的激活码
+        codes_to_expire = db.query(InvitationCode).filter(
+            and_(
+                InvitationCode.is_expired == False,
+                or_(
+                    # 激活码自己的过期时间已过
+                    and_(
+                        InvitationCode.expires_at.isnot(None),
+                        InvitationCode.expires_at < now
+                    ),
+                    # 或项目过期时间已过（激活码没有自己的过期时间）
+                    and_(
+                        InvitationCode.expires_at.is_(None),
+                        Project.expires_at.isnot(None),
+                        Project.expires_at < now
+                    )
+                )
+            )
+        ).join(Project).all()
+
+        # 2. 未过期但 is_expired=True 的激活码（可能被延长了有效期）
+        codes_to_unexpire = db.query(InvitationCode).filter(
+            and_(
+                InvitationCode.is_expired == True,
+                or_(
+                    # 激活码自己的过期时间未到
+                    and_(
+                        InvitationCode.expires_at.isnot(None),
+                        InvitationCode.expires_at >= now
+                    ),
+                    # 或项目过期时间未到（激活码没有自己的过期时间）
+                    and_(
+                        InvitationCode.expires_at.is_(None),
+                        or_(
+                            Project.expires_at.is_(None),
+                            Project.expires_at >= now
+                        )
+                    )
+                )
+            )
+        ).join(Project).all()
+
+        if not dry_run:
+            # 更新已过期的激活码
+            for code in codes_to_expire:
+                code.is_expired = True
+                stats["expired_updated"] += 1
+
+            # 更新未过期的激活码（延长了有效期）
+            for code in codes_to_unexpire:
+                code.is_expired = False
+                stats["unexpired_updated"] += 1
+
+            db.commit()
+
+        else:
+            stats["expired_updated"] = len(codes_to_expire)
+            stats["unexpired_updated"] = len(codes_to_unexpire)
+
+    return stats
+
+
 if __name__ == "__main__":
     """命令行运行清理任务"""
     import argparse
 
-    parser = argparse.ArgumentParser(description="清理过期邀请码")
+    parser = argparse.ArgumentParser(description="清理过期激活码")
     parser.add_argument(
         "--retention-days",
         type=int,
@@ -100,7 +186,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    print(f"开始清理过期邀请码（保留天数: {args.retention_days}，模拟运行: {args.dry_run}）...")
+    print(f"开始清理过期激活码（保留天数: {args.retention_days}，模拟运行: {args.dry_run}）...")
     stats = cleanup_expired_codes(
         retention_days=args.retention_days,
         dry_run=args.dry_run,
@@ -108,5 +194,5 @@ if __name__ == "__main__":
 
     print(f"清理完成:")
     print(f"  删除项目数: {stats['projects_deleted']}")
-    print(f"  删除邀请码数: {stats['codes_deleted']}")
+    print(f"  删除激活码数: {stats['codes_deleted']}")
     print(f"  删除日志数: {stats['logs_deleted']}")

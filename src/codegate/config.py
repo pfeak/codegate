@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE: Optional[str] = None
 
-    # 邀请码配置
+    # 激活码配置
     CODE_DEFAULT_LENGTH: int = 12
     CODE_CHARSET: str = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # 排除易混淆字符
 

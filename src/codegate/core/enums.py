@@ -24,11 +24,9 @@ class ProjectStatus(str, Enum):
     DISABLED = "disabled"  # 禁用
 
 
-class CodeStatus(str, Enum):
-    """邀请码状态枚举"""
-    UNVERIFIED = "unverified"  # 未核销
-    VERIFIED = "verified"  # 已核销
-    EXPIRED = "expired"  # 已过期
+# 注意：激活码状态统一为布尔值，不再使用枚举
+# False = 未使用，True = 已使用
+# 过期判断通过项目有效期计算，不作为状态
 
 
 class VerificationResult(str, Enum):
@@ -39,8 +37,8 @@ class VerificationResult(str, Enum):
 
 class VerificationFailureReason(str, Enum):
     """核销失败原因枚举"""
-    CODE_NOT_FOUND = "code_not_found"  # 邀请码不存在
-    CODE_ALREADY_VERIFIED = "code_already_verified"  # 邀请码已核销
-    CODE_EXPIRED = "code_expired"  # 邀请码已过期
+    CODE_NOT_FOUND = "code_not_found"  # 激活码不存在
+    CODE_ALREADY_VERIFIED = "code_already_verified"  # 激活码已核销
+    CODE_EXPIRED = "code_expired"  # 激活码已过期
     PROJECT_DISABLED = "project_disabled"  # 项目已禁用
     PROJECT_EXPIRED = "project_expired"  # 项目已过期

@@ -16,18 +16,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Index
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Index, event
 from sqlalchemy.orm import relationship
 
 from ..database import Base
+from ..utils.uuid_utils import generate_uuid
 
 
 class VerificationLog(Base):
     """核销日志模型"""
     __tablename__ = "verification_logs"
 
-    id = Column(Integer, primary_key=True, index=True, comment="日志ID")
-    code_id = Column(Integer, ForeignKey("invitation_codes.id", ondelete="CASCADE"), nullable=False, index=True, comment="邀请码ID")
+    id = Column(String(32), primary_key=True, index=True, comment="日志ID（UUID，去除连字符）")
+    code_id = Column(String(32), ForeignKey("invitation_codes.id", ondelete="CASCADE"), nullable=False, index=True, comment="激活码ID（UUID，去除连字符）")
     verified_at = Column(DateTime, default=datetime.utcnow, nullable=False, comment="核销时间")
     verified_by = Column(String(100), nullable=True, comment="核销用户")
     ip_address = Column(String(45), nullable=True, comment="IP地址")
@@ -45,3 +46,10 @@ class VerificationLog(Base):
 
     def __repr__(self) -> str:
         return f"<VerificationLog(id={self.id}, code_id={self.code_id}, result='{self.result}')>"
+
+
+@event.listens_for(VerificationLog, "before_insert")
+def generate_log_id(mapper, connection, target):
+    """在插入前生成日志ID"""
+    if not target.id:
+        target.id = generate_uuid()

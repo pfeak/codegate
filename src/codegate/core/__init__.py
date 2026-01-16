@@ -17,7 +17,6 @@ limitations under the License.
 """
 from .enums import (
     ProjectStatus,
-    CodeStatus,
     VerificationResult,
     VerificationFailureReason,
 )
@@ -49,7 +48,6 @@ from .constants import (
 __all__ = [
     # 枚举
     "ProjectStatus",
-    "CodeStatus",
     "VerificationResult",
     "VerificationFailureReason",
     # 异常

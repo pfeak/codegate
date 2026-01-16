@@ -25,7 +25,7 @@ import logging
 
 from .config import settings
 from .database import init_db
-from .api import projects, codes, verify
+from .api import projects, codes, verify, auth, dashboard
 
 # 配置日志
 logging.basicConfig(
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="邀请码核销平台 API",
+    description="激活码核销平台 API",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -54,8 +54,11 @@ app.add_middleware(
 )
 
 # 注册 API 路由
+app.include_router(auth.router)
+app.include_router(dashboard.router)
 app.include_router(projects.router)
 app.include_router(codes.router)
+app.include_router(codes.router_standalone)  # 独立的激活码API路由
 app.include_router(verify.router)
 
 # 静态文件和模板
@@ -86,6 +89,30 @@ async def startup_event():
     logger.info("数据库初始化完成")
 
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """登录页面"""
+    if templates:
+        return templates.TemplateResponse("login.html", {"request": request})
+    return RedirectResponse(url="/docs")
+
+
+@app.get("/change-password", response_class=HTMLResponse)
+async def change_password_page(request: Request):
+    """首次登录修改密码页面"""
+    if templates:
+        return templates.TemplateResponse("change_password.html", {"request": request})
+    return RedirectResponse(url="/docs")
+
+
+@app.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request):
+    """个人管理页面"""
+    if templates:
+        return templates.TemplateResponse("profile.html", {"request": request})
+    return RedirectResponse(url="/docs")
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """首页"""
@@ -102,27 +129,20 @@ async def projects_list(request: Request):
     return RedirectResponse(url="/docs")
 
 
-@app.get("/projects/new", response_class=HTMLResponse)
-async def project_new(request: Request):
-    """创建项目页面"""
-    if templates:
-        return templates.TemplateResponse("projects/form.html", {"request": request, "project_id": None})
-    return RedirectResponse(url="/docs")
+# 移除独立的创建项目页面，改为弹框创建
+# @app.get("/projects/new", response_class=HTMLResponse)
+# async def project_new(request: Request):
+#     """创建项目页面"""
+#     if templates:
+#         return templates.TemplateResponse("projects/form.html", {"request": request, "project_id": None})
+#     return RedirectResponse(url="/docs")
 
 
 @app.get("/projects/{project_id}", response_class=HTMLResponse)
-async def project_detail(request: Request, project_id: int):
+async def project_detail(request: Request, project_id: str):
     """项目详情页面"""
     if templates:
         return templates.TemplateResponse("projects/detail.html", {"request": request, "project_id": project_id})
-    return RedirectResponse(url="/docs")
-
-
-@app.get("/projects/{project_id}/edit", response_class=HTMLResponse)
-async def project_edit(request: Request, project_id: int):
-    """编辑项目页面"""
-    if templates:
-        return templates.TemplateResponse("projects/form.html", {"request": request, "project_id": project_id})
     return RedirectResponse(url="/docs")
 
 

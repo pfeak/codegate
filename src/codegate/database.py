@@ -17,6 +17,7 @@ limitations under the License.
 """
 from sqlalchemy.orm import DeclarativeBase
 import os
+import logging
 from contextlib import contextmanager
 from pathlib import Path
 from sqlalchemy import create_engine, event
@@ -25,6 +26,8 @@ from sqlalchemy.pool import StaticPool
 from filelock import FileLock
 
 from .config import settings
+
+logger = logging.getLogger(__name__)
 
 # 创建数据库引擎
 # SQLite 使用 WAL 模式支持并发读写
@@ -135,9 +138,30 @@ def get_db_context():
 def init_db():
     """初始化数据库（创建所有表）"""
     # 导入所有模型以确保表被注册
-    from .models import Project, InvitationCode, VerificationLog
+    from .models import Project, InvitationCode, VerificationLog, Admin
+    from .services.auth import AuthService
+    from .services.auth.auth_repository import AuthRepository
+    from sqlalchemy import select
 
     Base.metadata.create_all(bind=engine)
+
+    # 创建默认管理员账户（如果不存在）
+    with get_db_context() as db:
+        # 检查是否已存在管理员
+        stmt = select(Admin).where(Admin.username == "admin")
+        existing_admin = db.execute(stmt).scalar_one_or_none()
+
+        if not existing_admin:
+            # 创建默认管理员账户
+            # 用户名：admin，密码：123456
+            default_password_hash = AuthService.hash_password("123456")
+            default_admin = Admin(
+                username="admin",
+                password_hash=default_password_hash,
+                is_initial_password=True,  # 标记为初始密码
+            )
+            AuthRepository.create(db, default_admin)
+            logger.info("已创建默认管理员账户：admin / 123456")
 
 
 def drop_db():

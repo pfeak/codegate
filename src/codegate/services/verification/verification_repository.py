@@ -53,7 +53,7 @@ class VerificationRepository:
 
         Args:
             db: 数据库会话
-            code_id: 邀请码ID（可选）
+            code_id: 激活码ID（可选）
             page: 页码
             page_size: 每页数量
 

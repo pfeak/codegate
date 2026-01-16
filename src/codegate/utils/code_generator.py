@@ -1,5 +1,5 @@
 """
-邀请码生成器
+激活码生成器
 
 Copyright 2026 pfeak
 
@@ -30,22 +30,22 @@ def generate_codes(
     max_attempts: int = 10000,
 ) -> list[str]:
     """
-    批量生成唯一的邀请码
+    批量生成唯一的激活码
     
     Args:
         count: 生成数量
-        length: 邀请码长度（不包括前缀和后缀），默认 12
+        length: 激活码长度（不包括前缀和后缀），默认 12
         prefix: 前缀（可选）
         suffix: 后缀（可选）
-        existing_codes: 已存在的邀请码集合，用于避免重复
+        existing_codes: 已存在的激活码集合，用于避免重复
         charset: 字符集，默认大写字母+数字
-        max_attempts: 生成单个邀请码的最大尝试次数
+        max_attempts: 生成单个激活码的最大尝试次数
     
     Returns:
-        list[str]: 生成的邀请码列表
+        list[str]: 生成的激活码列表
     
     Raises:
-        ValueError: 无法生成足够数量的唯一邀请码
+        ValueError: 无法生成足够数量的唯一激活码
     """
     if existing_codes is None:
         existing_codes = set()
@@ -60,14 +60,14 @@ def generate_codes(
     random_length = length - prefix_len - suffix_len
     
     if random_length <= 0:
-        raise ValueError("邀请码长度必须大于前缀和后缀的总长度")
+        raise ValueError("激活码长度必须大于前缀和后缀的总长度")
     
     # 计算可能的组合数
     possible_combinations = len(charset) ** random_length
     if count > possible_combinations * 0.9:
         raise ValueError(
-            f"请求生成的数量 ({count}) 过多，可能无法生成足够的唯一邀请码。"
-            f"当前配置最多可生成约 {int(possible_combinations * 0.9)} 个唯一邀请码。"
+            f"请求生成的数量 ({count}) 过多，可能无法生成足够的唯一激活码。"
+            f"当前配置最多可生成约 {int(possible_combinations * 0.9)} 个唯一激活码。"
         )
     
     generated_codes: list[str] = []
@@ -80,7 +80,7 @@ def generate_codes(
         while code is None or code in used_codes:
             if attempts >= max_attempts:
                 raise ValueError(
-                    f"无法生成唯一邀请码，已尝试 {max_attempts} 次。"
+                    f"无法生成唯一激活码，已尝试 {max_attempts} 次。"
                     f"当前已生成 {len(generated_codes)} 个，请求 {count} 个。"
                 )
             

@@ -16,7 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-# 邀请码生成配置
+# 激活码生成配置
 DEFAULT_CODE_LENGTH = 12
 MIN_CODE_LENGTH = 4
 MAX_CODE_LENGTH = 32
@@ -36,7 +36,7 @@ MAX_BATCH_IMPORT_COUNT = 50000
 MAX_PROJECT_NAME_LENGTH = 100
 MAX_PROJECT_DESCRIPTION_LENGTH = 1000
 
-# 邀请码配置
+# 激活码配置
 MAX_CODE_PREFIX_LENGTH = 10
 MAX_CODE_SUFFIX_LENGTH = 10
 

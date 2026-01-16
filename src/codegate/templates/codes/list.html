@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}邀请码列表 - CodeGate{% endblock %}
+{% block title %}激活码列表 - CodeGate{% endblock %}
 
 {% block content %}
 <div class="px-4 py-6 sm:px-0">
     <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">邀请码列表</h1>
+        <h1 class="text-3xl font-bold text-gray-900">激活码列表</h1>
         <p class="text-gray-600 mt-1">项目: <span id="project-name">加载中...</span></p>
     </div>
 
     <div class="bg-white shadow rounded-lg p-6">
         <div class="mb-4">
-            <input type="text" id="code-search" placeholder="搜索邀请码..."
+            <input type="text" id="code-search" placeholder="搜索激活码..."
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
         </div>
 
@@ -19,7 +19,7 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">邀请码
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">激活码
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态
                         </th>
@@ -41,7 +41,7 @@
 
         <div class="mt-4 flex justify-between items-center">
             <div class="text-sm text-gray-700">
-                共 <span id="code-total-count">0</span> 个邀请码
+                共 <span id="code-total-count">0</span> 个激活码
             </div>
             <div class="flex space-x-2" id="code-pagination">
             </div>
@@ -88,14 +88,20 @@
             document.getElementById('code-total-count').textContent = data.total;
 
             if (data.items.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">暂无邀请码</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">暂无激活码</td></tr>';
                 return;
             }
 
             tbody.innerHTML = data.items.map(code => {
-                const statusBadge = code.status
-                    ? '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">已核销</span>'
-                    : '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">未核销</span>';
+                // 状态判断：统一展示为 已使用/未使用/已禁用
+                let statusBadge;
+                if (code.is_disabled) {
+                    statusBadge = '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">已禁用</span>';
+                } else if (code.status) {
+                    statusBadge = '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">已使用</span>';
+                } else {
+                    statusBadge = '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">未使用</span>';
+                }
 
                 const verifiedAt = code.verified_at
                     ? new Date(code.verified_at).toLocaleString('zh-CN')
@@ -117,7 +123,7 @@
             // 更新分页
             updateCodePagination(data.total, page);
         } catch (error) {
-            console.error('加载邀请码列表失败:', error);
+            console.error('加载激活码列表失败:', error);
         }
     }
 

@@ -26,6 +26,7 @@ from ...core.exceptions import (
     CodeNotFoundError,
     CodeAlreadyVerifiedError,
     CodeExpiredError,
+    CodeDisabledError,
     ProjectDisabledError,
     ProjectExpiredError,
 )
@@ -44,7 +45,7 @@ class VerificationService:
         user_agent: Optional[str] = None,
     ) -> InvitationCode:
         """
-        核销验证邀请码
+        核销验证激活码
 
         Args:
             db: 数据库会话
@@ -53,36 +54,44 @@ class VerificationService:
             user_agent: 用户代理
 
         Returns:
-            InvitationCode: 核销成功的邀请码对象
+            InvitationCode: 核销成功的激活码对象
 
         Raises:
-            CodeNotFoundError: 邀请码不存在
-            CodeAlreadyVerifiedError: 邀请码已核销
-            CodeExpiredError: 邀请码已过期
+            CodeNotFoundError: 激活码不存在
+            CodeAlreadyVerifiedError: 激活码已核销
+            CodeDisabledError: 激活码已禁用
+            CodeExpiredError: 激活码已过期
             ProjectDisabledError: 项目已禁用
             ProjectExpiredError: 项目已过期
         """
-        # 查找邀请码
+        # 查找激活码
         code = CodeRepository.get_by_code(db, request.code)
 
         if not code:
             # 记录失败日志
             VerificationService._log_verification(
-                db, None, False, "邀请码不存在", ip_address, user_agent, request.verified_by
+                db, None, False, "激活码不存在", ip_address, user_agent, request.verified_by
             )
             raise CodeNotFoundError(request.code)
+
+        # 检查是否已禁用
+        if code.is_disabled:
+            VerificationService._log_verification(
+                db, code.id, False, "激活码已禁用", ip_address, user_agent, request.verified_by
+            )
+            raise CodeDisabledError(request.code)
 
         # 检查是否已核销
         if code.status:
             VerificationService._log_verification(
-                db, code.id, False, "邀请码已核销", ip_address, user_agent, request.verified_by
+                db, code.id, False, "激活码已使用", ip_address, user_agent, request.verified_by
             )
             raise CodeAlreadyVerifiedError(request.code)
 
         # 检查是否过期
         if code.is_expired:
             VerificationService._log_verification(
-                db, code.id, False, "邀请码已过期", ip_address, user_agent, request.verified_by
+                db, code.id, False, "激活码已过期", ip_address, user_agent, request.verified_by
             )
             raise CodeExpiredError(request.code)
 
@@ -129,7 +138,7 @@ class VerificationService:
 
         Args:
             db: 数据库会话
-            code_id: 邀请码ID
+            code_id: 激活码ID
             success: 是否成功
             reason: 失败原因
             ip_address: IP地址
@@ -159,7 +168,7 @@ class VerificationService:
 
         Args:
             db: 数据库会话
-            code_id: 邀请码ID（可选）
+            code_id: 激活码ID（可选）
             page: 页码
             page_size: 每页数量
 

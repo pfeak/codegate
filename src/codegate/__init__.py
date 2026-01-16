@@ -1,4 +1,6 @@
 """
+CodeGate 平台主模块
+
 Copyright 2026 pfeak
 
 Licensed under the Apache License, Version 2.0 (the "License");
