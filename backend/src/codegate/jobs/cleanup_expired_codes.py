@@ -100,6 +100,7 @@ def update_expired_status(dry_run: bool = False) -> dict:
     stats = {
         "expired_updated": 0,
         "unexpired_updated": 0,
+        "inconsistent_fixed": 0,
         "dry_run": dry_run,
     }
 
@@ -158,11 +159,50 @@ def update_expired_status(dry_run: bool = False) -> dict:
                 code.is_expired = False
                 stats["unexpired_updated"] += 1
 
+            # 状态一致性修复（code_status_logic.md 7.2）
+            inconsistent_codes = (
+                db.query(InvitationCode)
+                .filter(
+                    or_(
+                        and_(InvitationCode.status == True, InvitationCode.is_expired == True),
+                        and_(InvitationCode.is_disabled == True, InvitationCode.is_expired == True),
+                        and_(InvitationCode.status == True, InvitationCode.is_disabled == True),
+                    )
+                )
+                .all()
+            )
+            for code in inconsistent_codes:
+                fixed = False
+                if code.status and code.is_expired:
+                    code.is_expired = False
+                    fixed = True
+                if code.is_disabled and code.is_expired:
+                    code.is_expired = False
+                    fixed = True
+                if code.status and code.is_disabled:
+                    code.is_disabled = False
+                    fixed = True
+                if fixed:
+                    stats["inconsistent_fixed"] += 1
+
             db.commit()
 
         else:
             stats["expired_updated"] = len(codes_to_expire)
             stats["unexpired_updated"] = len(codes_to_unexpire)
+            stats["inconsistent_fixed"] = (
+                len(
+                    db.query(InvitationCode)
+                    .filter(
+                        or_(
+                            and_(InvitationCode.status == True, InvitationCode.is_expired == True),
+                            and_(InvitationCode.is_disabled == True, InvitationCode.is_expired == True),
+                            and_(InvitationCode.status == True, InvitationCode.is_disabled == True),
+                        )
+                    )
+                    .all()
+                )
+            )
 
     return stats
 

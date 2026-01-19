@@ -18,8 +18,10 @@ limitations under the License.
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from ...models.project import Project
+from ...models.invitation_code import InvitationCode
 from ...schemas.project import ProjectCreate, ProjectUpdate
 from ...core.exceptions import ProjectNotFoundError, ProjectAlreadyExistsError
 from .project_repository import ProjectRepository
@@ -79,7 +81,7 @@ class ProjectService:
     def get_list(
         db: Session,
         page: int = 1,
-        page_size: int = 20,
+        page_size: int = 10,
         search: Optional[str] = None,
         status: Optional[bool] = None,
     ) -> tuple[list[Project], int]:
@@ -155,3 +157,55 @@ class ProjectService:
 
         ProjectRepository.delete(db, project)
         return True
+
+    @staticmethod
+    def get_code_stats(db: Session, project_id: str) -> dict[str, int]:
+        """
+        计算项目下激活码的统计数据（总数/已使用/未使用/已过期）
+
+        统计口径遵循 docs/design/logic/code_status_logic.md：
+        - 未使用：status=False 且 is_disabled=False 且 is_expired=False
+        - 已使用：status=True 且 is_disabled=False 且 is_expired=False
+        - 已过期：is_expired=True（独立状态）
+        """
+        base_query = db.query(InvitationCode).filter(InvitationCode.project_id == project_id)
+
+        total = base_query.count()
+        verified = (
+            db.query(func.count(InvitationCode.id))
+            .filter(
+                InvitationCode.project_id == project_id,
+                InvitationCode.status.is_(True),
+                InvitationCode.is_disabled.is_(False),
+                InvitationCode.is_expired.is_(False),
+            )
+            .scalar()
+            or 0
+        )
+        expired = (
+            db.query(func.count(InvitationCode.id))
+            .filter(
+                InvitationCode.project_id == project_id,
+                InvitationCode.is_expired.is_(True),
+            )
+            .scalar()
+            or 0
+        )
+        unverified = (
+            db.query(func.count(InvitationCode.id))
+            .filter(
+                InvitationCode.project_id == project_id,
+                InvitationCode.status.is_(False),
+                InvitationCode.is_disabled.is_(False),
+                InvitationCode.is_expired.is_(False),
+            )
+            .scalar()
+            or 0
+        )
+
+        return {
+            "total": total,
+            "verified": verified,
+            "unverified": unverified,
+            "expired": expired,
+        }

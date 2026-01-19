@@ -61,6 +61,11 @@ class ProjectResponse(ProjectBase):
     status: bool = Field(..., description="项目状态(True=启用,False=禁用)")
     is_expired: bool = Field(..., description="是否过期")
     is_active: bool = Field(..., description="是否激活(启用且未过期)")
+    # 统计字段（项目详情页需要）
+    code_count: Optional[int] = Field(None, description="激活码总数")
+    verified_count: Optional[int] = Field(None, description="已核销数量")
+    unverified_count: Optional[int] = Field(None, description="未核销数量")
+    expired_count: Optional[int] = Field(None, description="已过期数量")
 
     @field_validator('id', mode='before')
     @classmethod

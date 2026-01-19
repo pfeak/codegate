@@ -21,7 +21,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { authApi } from '@/lib/api';
-import { timestampToLocal } from '@/lib/utils';
+import { getErrorMessage, timestampToLocal } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -52,6 +52,8 @@ export default function ProfilePage() {
       setAdminInfo(data);
     } catch (error) {
       console.error('加载管理员信息错误:', error);
+      // 与 PRD 对齐：加载失败时给出 Toast 提示
+      toast.error(getErrorMessage(error as any, '加载个人信息失败，请稍后重试'));
     } finally {
       setInfoLoading(false);
     }
@@ -96,7 +98,13 @@ export default function ProfilePage() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      toast.error(err.message || '密码修改失败');
+      const msg = getErrorMessage(err, '修改失败：请稍后重试');
+      // 与 PRD 约定对齐：失败文案统一使用“修改失败：{detail}”
+      if (msg.startsWith('修改失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`修改失败：${msg}`);
+      }
     } finally {
       setLoading(false);
     }

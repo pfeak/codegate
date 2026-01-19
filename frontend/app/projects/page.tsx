@@ -22,9 +22,9 @@ import { useState, useEffect, FormEvent, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
-import { projectsApi } from '@/lib/api';
+import { DEFAULT_PAGE_SIZE, projectsApi } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
-import { timestampToLocal, truncateText, dateTimeLocalToTimestamp, timestampToDateTimeLocalValue, shortUuid } from '@/lib/utils';
+import { getErrorMessage, timestampToLocal, truncateText, dateTimeLocalToTimestamp, timestampToDateTimeLocalValue, shortUuid } from '@/lib/utils';
 import { Search, Plus, Edit, Trash2, Power, PowerOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,7 +84,7 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<any>(null);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
 
-  const pageSize = 20;
+  const pageSize = DEFAULT_PAGE_SIZE;
 
   const syncQuery = useCallback(
     (next: { page?: number; search?: string; status?: string }) => {
@@ -115,7 +115,7 @@ export default function ProjectsPage() {
       setProjects(data.items);
       setTotal(data.total);
     } catch (error: any) {
-      toast.error(error.message || '加载项目列表失败');
+      toast.error(getErrorMessage(error, '加载项目列表失败，请稍后重试'));
     } finally {
       setLoading(false);
     }
@@ -178,7 +178,13 @@ export default function ProjectsPage() {
       setProjects((prev) => [created, ...prev].slice(0, pageSize));
       setTotal((prev) => prev + 1);
     } catch (error: any) {
-      toast.error(error.message || '创建失败');
+      const msg = getErrorMessage(error, '创建失败：项目名称已存在或不合法');
+      // PRD：失败统一为“创建失败：{detail}”
+      if (msg.startsWith('创建失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`创建失败：${msg}`);
+      }
     }
   };
 
@@ -199,12 +205,19 @@ export default function ProjectsPage() {
         expires_at: expiresAt ? dateTimeLocalToTimestamp(expiresAt) : null,
         status,
       });
-      toast.success('更新成功');
+      // PRD：编辑成功统一为“保存成功”
+      toast.success('保存成功');
       setShowEditModal(false);
       setEditingProject(null);
       replaceProjectInList(updated);
     } catch (error: any) {
-      toast.error(error.message || '更新失败');
+      const msg = getErrorMessage(error, '保存失败：请稍后重试');
+      // PRD：失败统一为“保存失败：{detail}”
+      if (msg.startsWith('保存失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`保存失败：${msg}`);
+      }
     }
   };
 
@@ -224,17 +237,28 @@ export default function ProjectsPage() {
         syncQuery({ page: nextPage, search, status });
       }
     } catch (error: any) {
-      toast.error(error.message || '删除失败');
+      const msg = getErrorMessage(error, '删除失败：请稍后重试');
+      if (msg.startsWith('删除失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`删除失败：${msg}`);
+      }
     }
   };
 
   const handleToggleStatus = async (projectId: string, currentStatus: boolean) => {
     try {
       const updated = await projectsApi.update(projectId, { status: !currentStatus });
-      toast.success('状态更新成功');
+      // PRD：启用/禁用的成功提示
+      toast.success(!currentStatus ? '已启用项目' : '已禁用项目');
       replaceProjectInList(updated);
     } catch (error: any) {
-      toast.error(error.message || '操作失败');
+      const msg = getErrorMessage(error, '状态更新失败：请稍后重试');
+      if (msg.startsWith('状态更新失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`状态更新失败：${msg}`);
+      }
     }
   };
 
@@ -244,7 +268,7 @@ export default function ProjectsPage() {
       setEditingProject(project);
       setShowEditModal(true);
     } catch (error: any) {
-      toast.error(error.message || '加载项目数据失败');
+      toast.error(getErrorMessage(error, '加载项目数据失败'));
     }
   };
 
@@ -598,7 +622,7 @@ export default function ProjectsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除这个项目吗？这将删除所有关联的激活码！
+            确定要删除该项目及其所有关联的激活码吗？此操作无法恢复。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

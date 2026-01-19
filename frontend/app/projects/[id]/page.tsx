@@ -22,9 +22,9 @@ import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
-import { projectsApi, codesApi } from '@/lib/api';
+import { projectsApi, codesApi, DEFAULT_PAGE_SIZE } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
-import { timestampToLocal, dateTimeLocalToTimestamp, formatNumber, timestampToDateTimeLocalValue, shortUuid } from '@/lib/utils';
+import { getErrorMessage, timestampToLocal, dateTimeLocalToTimestamp, formatNumber, timestampToDateTimeLocalValue, shortUuid } from '@/lib/utils';
 import { ArrowLeft, Plus, Edit, Trash2, Power, PowerOff, RotateCcw, Ban, Copy, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,7 +87,7 @@ export default function ProjectDetailPage() {
   const [sortBy, setSortBy] = useState<'created_at' | 'verified_at'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const pageSize = 50;
+  const pageSize = DEFAULT_PAGE_SIZE;
 
   const filterParams = useCallback((filter: string) => {
     let status: boolean | undefined = undefined;
@@ -139,7 +139,7 @@ export default function ProjectDetailPage() {
       const data = await projectsApi.get(projectId);
       setProject(data);
     } catch (error: any) {
-      toast.error(error.message || '加载项目信息失败');
+      toast.error(getErrorMessage(error, '加载项目信息失败，请稍后重试'));
       router.push('/projects');
     } finally {
       setLoading(false);
@@ -161,7 +161,7 @@ export default function ProjectDetailPage() {
       setCodes(applySort(data.items));
       setTotal(data.total);
     } catch (error: any) {
-      toast.error(error.message || '加载激活码列表失败');
+      toast.error(getErrorMessage(error, '加载激活码列表失败，请稍后重试'));
     } finally {
       setCodesLoading(false);
     }
@@ -235,23 +235,35 @@ export default function ProjectDetailPage() {
         count,
         expires_at: expiresAt ? dateTimeLocalToTimestamp(expiresAt) : null,
       });
-      toast.success(`成功生成 ${count} 个激活码`);
+      // PRD：批量生成成功文案
+      toast.success(`批量生成成功：共生成 ${count} 个激活码`);
       setShowGenerateDialog(false);
       // 操作成功后，按 PRD 要求重新拉取激活码列表（局部刷新）
       await loadCodes();
     } catch (error: any) {
-      toast.error(error.message || '生成激活码失败');
+      const msg = getErrorMessage(error, '批量生成失败：请稍后重试');
+      if (msg.startsWith('批量生成失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`批量生成失败：${msg}`);
+      }
     }
   };
 
   const handleToggleCodeStatus = async (codeId: string, currentDisabled: boolean) => {
     try {
       await codesApi.update(codeId, { is_disabled: !currentDisabled });
-      toast.success('操作成功');
+      // PRD：单个激活码启用/禁用成功文案
+      toast.success(!currentDisabled ? '禁用成功' : '启用成功');
       // 为保证筛选/统计等完全一致，操作后重新加载列表
       await loadCodes();
     } catch (error: any) {
-      toast.error(error.message || '操作失败');
+      const msg = getErrorMessage(error, '操作失败：请稍后重试');
+      if (msg.startsWith('操作失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`操作失败：${msg}`);
+      }
     }
   };
 
@@ -262,7 +274,12 @@ export default function ProjectDetailPage() {
       // 重新拉取激活码列表，确保状态/统计同步
       await loadCodes();
     } catch (error: any) {
-      toast.error(error.message || '操作失败');
+      const msg = getErrorMessage(error, '操作失败：请稍后重试');
+      if (msg.startsWith('操作失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`操作失败：${msg}`);
+      }
     }
   };
 
@@ -274,7 +291,7 @@ export default function ProjectDetailPage() {
       const detail = await codesApi.get(projectId, codeId);
       setCodeDetail(detail);
     } catch (error: any) {
-      toast.error(error.message || '加载激活码详情失败');
+      toast.error(getErrorMessage(error, '加载激活码详情失败，请稍后重试'));
       setShowCodeDetailDialog(false);
     } finally {
       setCodeDetailLoading(false);
@@ -291,7 +308,12 @@ export default function ProjectDetailPage() {
       // 简化为重新请求列表，避免本地分页/筛选逻辑出错
       await loadCodes();
     } catch (error: any) {
-      toast.error(error.message || '删除失败');
+      const msg = getErrorMessage(error, '删除失败：请稍后重试');
+      if (msg.startsWith('删除失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`删除失败：${msg}`);
+      }
     }
   };
 
@@ -304,11 +326,17 @@ export default function ProjectDetailPage() {
         is_disabled,
         is_expired,
       });
+      // PRD：批量禁用成功使用后端返回 message（已包含数量），否则使用统一文案
       toast.success(res.message || '批量禁用成功');
       // 批量操作后，直接按当前筛选条件重新拉取列表
       await loadCodes();
     } catch (error: any) {
-      toast.error(error.message || '批量禁用失败');
+      const msg = getErrorMessage(error, '批量禁用失败：请稍后重试');
+      if (msg.startsWith('批量禁用失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`批量禁用失败：${msg}`);
+      }
     }
   };
 
@@ -316,10 +344,16 @@ export default function ProjectDetailPage() {
     if (!project) return;
     try {
       const updated = await projectsApi.update(project.id, { status: !project.status });
-      toast.success('项目状态已更新');
+      // PRD：启用/禁用项目成功文案
+      toast.success(!project.status ? '已启用项目' : '已禁用项目');
       setProject(updated);
     } catch (error: any) {
-      toast.error(error.message || '操作失败');
+      const msg = getErrorMessage(error, '操作失败：请稍后重试');
+      if (msg.startsWith('操作失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`操作失败：${msg}`);
+      }
     }
   };
 
@@ -327,10 +361,15 @@ export default function ProjectDetailPage() {
     if (!project) return;
     try {
       await projectsApi.delete(project.id);
-      toast.success('项目已删除');
+      toast.success('删除成功');
       router.push('/projects');
     } catch (error: any) {
-      toast.error(error.message || '删除失败');
+      const msg = getErrorMessage(error, '删除失败：请稍后重试');
+      if (msg.startsWith('删除失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`删除失败：${msg}`);
+      }
     }
   };
 
@@ -350,11 +389,17 @@ export default function ProjectDetailPage() {
         expires_at: expiresAt ? dateTimeLocalToTimestamp(expiresAt) : null,
         status: statusChecked,
       });
-      toast.success('项目已更新');
+      // PRD：项目编辑成功统一为“保存成功”
+      toast.success('保存成功');
       setShowEditProjectDialog(false);
       setProject(updated);
     } catch (error: any) {
-      toast.error(error.message || '更新失败');
+      const msg = getErrorMessage(error, '保存失败：请稍后重试');
+      if (msg.startsWith('保存失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`保存失败：${msg}`);
+      }
     }
   };
 
@@ -410,23 +455,15 @@ export default function ProjectDetailPage() {
 
   return (
     <MainLayout>
-      {/* 面包屑 + 返回 */}
-      <div className="mb-6 space-y-2">
-        <div className="text-sm text-muted-foreground">
-          <Link href="/" className="hover:text-foreground">
-            首页
-          </Link>{' '}
-          /{' '}
-          <Link href="/projects" className="hover:text-foreground">
-            项目管理
-          </Link>{' '}
-          / <span className="text-foreground">项目详情</span>
+      {/* 顶部区域：标题 + 返回 */}
+      <div className="mb-6 flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
+          <Link href="/projects" className="inline-flex items-center text-primary hover:text-primary/80">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            返回项目列表
+          </Link>
         </div>
-        <Link href="/projects" className="inline-flex items-center text-primary hover:text-primary/80">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          返回项目列表
-        </Link>
-        <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
       </div>
 
       {/* 项目信息卡片 */}
@@ -814,7 +851,7 @@ export default function ProjectDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认批量禁用</AlertDialogTitle>
             <AlertDialogDescription>
-              将批量禁用当前筛选条件下“未使用且未过期”的激活码。
+              确定要禁用当前筛选条件下的所有未使用激活码吗？
               {batchDisableCountLoading ? (
                 <span> 正在统计数量...</span>
               ) : typeof batchDisableCount === 'number' ? (
@@ -894,7 +931,7 @@ export default function ProjectDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除项目</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除这个项目吗？这将删除所有关联的激活码！
+              确定要删除该项目及其所有关联的激活码吗？此操作无法恢复。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

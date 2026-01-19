@@ -18,8 +18,9 @@ limitations under the License.
 
 # 激活码生成配置
 DEFAULT_CODE_LENGTH = 12
-MIN_CODE_LENGTH = 4
-MAX_CODE_LENGTH = 32
+# 设计文档要求：默认 8-16 位字母数字组合
+MIN_CODE_LENGTH = 8
+MAX_CODE_LENGTH = 16
 DEFAULT_CODE_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # 排除易混淆字符（0, O, I, 1）
 
 # 分页配置

@@ -75,7 +75,7 @@ class CodeRepository:
         db: Session,
         project_id: str,
         page: int = 1,
-        page_size: int = 50,
+        page_size: int = 10,
         status: Optional[bool] = None,
         is_disabled: Optional[bool] = None,
         is_expired: Optional[bool] = None,

@@ -46,10 +46,23 @@ def get_overview(
     code_count_stmt = select(func.count(InvitationCode.id))
     code_count = db.execute(code_count_stmt).scalar() or 0
 
-    verified_count_stmt = select(func.count(InvitationCode.id)).where(InvitationCode.status == True)
+    verified_count_stmt = (
+        select(func.count(InvitationCode.id)).where(
+            InvitationCode.status.is_(True),
+            InvitationCode.is_disabled.is_(False),
+            InvitationCode.is_expired.is_(False),
+        )
+    )
     verified_count = db.execute(verified_count_stmt).scalar() or 0
 
-    unverified_count = code_count - verified_count
+    unverified_count_stmt = (
+        select(func.count(InvitationCode.id)).where(
+            InvitationCode.status.is_(False),
+            InvitationCode.is_disabled.is_(False),
+            InvitationCode.is_expired.is_(False),
+        )
+    )
+    unverified_count = db.execute(unverified_count_stmt).scalar() or 0
 
     # 获取最近10条核销记录
     recent_logs_stmt = (

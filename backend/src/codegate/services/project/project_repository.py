@@ -74,7 +74,7 @@ class ProjectRepository:
     def get_list(
         db: Session,
         page: int = 1,
-        page_size: int = 20,
+        page_size: int = 10,
         search: Optional[str] = None,
         status: Optional[bool] = None,
     ) -> tuple[list[Project], int]:

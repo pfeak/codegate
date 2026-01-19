@@ -41,7 +41,7 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 @router.get("", response_model=ProjectListResponse)
 def get_projects(
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    page_size: int = Query(10, ge=1, le=100, description="每页数量"),
     search: Optional[str] = Query(None, description="搜索关键词"),
     status: Optional[bool] = Query(None, description="项目状态"),
     db: Session = Depends(get_db),
@@ -95,7 +95,24 @@ def get_project(
     if not project:
         raise HTTPException(status_code=404, detail="项目不存在")
 
-    return ProjectResponse.model_validate(project)
+    stats = ProjectService.get_code_stats(db=db, project_id=project_id)
+
+    return ProjectResponse.model_validate(
+        {
+            "id": project.id,
+            "name": project.name,
+            "description": project.description,
+            "created_at": project.created_at,
+            "expires_at": project.expires_at,
+            "status": project.status,
+            "is_expired": project.is_expired,
+            "is_active": project.is_active,
+            "code_count": stats["total"],
+            "verified_count": stats["verified"],
+            "unverified_count": stats["unverified"],
+            "expired_count": stats["expired"],
+        }
+    )
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)

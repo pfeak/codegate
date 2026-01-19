@@ -21,6 +21,7 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -51,7 +52,13 @@ export default function LoginPage() {
         router.push('/');
       }
     } catch (err: any) {
-      toast.error(err.message || '用户名或密码错误');
+      const msg = getErrorMessage(err, '用户名或密码错误');
+      // 与 PRD 约定对齐：默认“用户名或密码错误”，有 detail 时前缀“登录失败：”
+      if (msg === '用户名或密码错误') {
+        toast.error(msg);
+      } else {
+        toast.error(`登录失败：${msg}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -63,7 +70,6 @@ export default function LoginPage() {
         <Card className="shadow-lg">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">CodeGate 管理员登录</CardTitle>
-            <p className="text-muted-foreground text-sm">请输入您的用户名和密码</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">

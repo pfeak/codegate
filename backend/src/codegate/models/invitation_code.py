@@ -17,7 +17,16 @@ limitations under the License.
 """
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Index, event
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    event,
+)
 from sqlalchemy.orm import relationship
 
 from ..database import Base
@@ -51,9 +60,23 @@ class InvitationCode(Base):
     # 索引
     __table_args__ = (
         Index("idx_project_code", "project_id", "code"),
+        Index("idx_code_status", "status"),
         Index("idx_code_disabled", "is_disabled"),
         Index("idx_code_expired", "is_expired"),
         Index("idx_code_expires_at", "expires_at"),
+        # 状态互斥约束：已使用/已禁用/已过期不能同时出现
+        CheckConstraint(
+            "NOT (status = 1 AND is_disabled = 1)",
+            name="chk_code_not_used_and_disabled",
+        ),
+        CheckConstraint(
+            "NOT (status = 1 AND is_expired = 1)",
+            name="chk_code_not_used_and_expired",
+        ),
+        CheckConstraint(
+            "NOT (is_disabled = 1 AND is_expired = 1)",
+            name="chk_code_not_disabled_and_expired",
+        ),
     )
 
     def __repr__(self) -> str:

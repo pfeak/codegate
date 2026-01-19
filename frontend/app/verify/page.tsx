@@ -20,10 +20,9 @@
 
 import { useState, FormEvent, useRef, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
-import { verifyApi, verificationLogsApi } from '@/lib/api';
-import { useToast } from '@/components/ui/Toast';
+import { DEFAULT_PAGE_SIZE, verifyApi, verificationLogsApi } from '@/lib/api';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { timestampToLocal } from '@/lib/utils';
+import { getErrorMessage, timestampToLocal } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,7 +37,6 @@ import {
 } from '@/components/ui/table';
 
 export default function VerifyPage() {
-  const toast = useToast();
   const [code, setCode] = useState('');
   const [verifiedBy, setVerifiedBy] = useState('');
   const [loading, setLoading] = useState(false);
@@ -54,7 +52,7 @@ export default function VerifyPage() {
   const [logsTotal, setLogsTotal] = useState(0);
   const [logsPage, setLogsPage] = useState(1);
   const [logsLoading, setLogsLoading] = useState(true);
-  const logsPageSize = 20;
+  const logsPageSize = DEFAULT_PAGE_SIZE;
 
   useEffect(() => {
     // 页面加载时聚焦到输入框
@@ -103,7 +101,6 @@ export default function VerifyPage() {
       });
 
       if (data.success) {
-        toast.success(data.message || '核销成功');
         // 清空输入框
         setCode('');
         setVerifiedBy('');
@@ -114,16 +111,13 @@ export default function VerifyPage() {
         setTimeout(() => {
           codeInputRef.current?.focus();
         }, 100);
-      } else {
-        toast.error(data.message || '核销失败');
       }
     } catch (error: any) {
-      const errorMessage = error.message || '核销失败，请重试';
+      const errorMessage = getErrorMessage(error, '核销失败，请稍后重试');
       setResult({
         success: false,
         message: errorMessage,
       });
-      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -143,7 +137,6 @@ export default function VerifyPage() {
       {/* 页面标题 */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">核销验证</h1>
-        <p className="mt-2 text-muted-foreground">输入激活码进行核销验证</p>
       </div>
 
       {/* 核销表单 */}
@@ -199,6 +192,7 @@ export default function VerifyPage() {
               <Button
                 type="submit"
                 disabled={loading || !code.trim()}
+                className="w-full sm:w-[200px]"
               >
                 {loading ? (
                   <>
@@ -212,7 +206,13 @@ export default function VerifyPage() {
                   </>
                 )}
               </Button>
-              <Button type="button" variant="secondary" onClick={handleReset} disabled={loading}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleReset}
+                disabled={loading}
+                className="w-full sm:w-[200px]"
+              >
                 重置
               </Button>
             </div>

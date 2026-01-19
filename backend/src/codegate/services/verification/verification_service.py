@@ -31,6 +31,7 @@ from ...core.exceptions import (
     ProjectExpiredError,
 )
 from ..code.code_repository import CodeRepository
+from ..code.code_service import CodeService
 from .verification_repository import VerificationRepository
 
 
@@ -65,7 +66,7 @@ class VerificationService:
             ProjectExpiredError: 项目已过期
         """
         # 查找激活码
-        code = CodeRepository.get_by_code(db, request.code)
+        code = CodeService.get_by_code(db, request.code)
 
         if not code:
             # 记录失败日志

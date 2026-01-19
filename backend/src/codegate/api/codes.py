@@ -61,7 +61,7 @@ def generate_codes(
 def get_codes(
     project_id: str,
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(50, ge=1, le=100, description="每页数量"),
+    page_size: int = Query(10, ge=1, le=100, description="每页数量"),
     status: Optional[bool] = Query(None, description="状态筛选（True=已使用, False=未使用）"),
     is_disabled: Optional[bool] = Query(None, description="是否禁用筛选（True=已禁用, False=未禁用）"),
     is_expired: Optional[bool] = Query(None, description="是否过期筛选（True=已过期, False=未过期）"),
@@ -148,6 +148,7 @@ def batch_disable_unused(
     request: BatchDisableUnusedRequest,
     status: Optional[bool] = Query(None, description="状态筛选（True=已使用, False=未使用）"),
     is_disabled: Optional[bool] = Query(None, description="是否禁用筛选（True=已禁用, False=未禁用）"),
+    is_expired: Optional[bool] = Query(None, description="是否过期筛选（True=已过期, False=未过期）"),
     search: Optional[str] = Query(None, description="搜索关键词"),
     db: Session = Depends(get_db),
     current_admin: AdminResponse = Depends(require_admin),
@@ -159,6 +160,8 @@ def batch_disable_unused(
     支持通过查询参数传递筛选条件
     """
     try:
+        if is_expired:
+            raise HTTPException(status_code=400, detail="仅支持未过期的激活码进行批量禁用")
         # 批量禁用仅针对未使用的激活码，所以固定 status=False, is_disabled=False
         # 但支持通过 search 参数进行进一步筛选
         disabled_count = CodeService.batch_disable_unused(
@@ -181,6 +184,7 @@ def batch_disable_unused(
 @router.get("/batch-disable-unused/count")
 def batch_disable_unused_count(
     project_id: str,
+    is_expired: Optional[bool] = Query(None, description="是否过期筛选（True=已过期, False=未过期）"),
     search: Optional[str] = Query(None, description="搜索关键词"),
     db: Session = Depends(get_db),
     current_admin: AdminResponse = Depends(require_admin),
@@ -194,6 +198,8 @@ def batch_disable_unused_count(
     - 未过期(is_expired=False)
     - 支持 search 进一步筛选
     """
+    if is_expired:
+        raise HTTPException(status_code=400, detail="仅支持未过期的激活码进行批量禁用")
     # 检查项目是否存在
     project = ProjectService.get_by_id(db=db, project_id=project_id)
     if not project:

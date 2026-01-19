@@ -16,8 +16,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import random
-import string
 from typing import Optional, Set
+
+from ..core.constants import (
+    DEFAULT_CODE_CHARSET,
+    DEFAULT_CODE_LENGTH,
+    MAX_CODE_LENGTH,
+    MAX_CODE_PREFIX_LENGTH,
+    MAX_CODE_SUFFIX_LENGTH,
+    MIN_CODE_LENGTH,
+)
 
 
 def generate_codes(
@@ -26,7 +34,7 @@ def generate_codes(
     prefix: Optional[str] = None,
     suffix: Optional[str] = None,
     existing_codes: Optional[Set[str]] = None,
-    charset: str = string.ascii_uppercase + string.digits,
+    charset: str = DEFAULT_CODE_CHARSET,
     max_attempts: int = 10000,
 ) -> list[str]:
     """
@@ -50,9 +58,17 @@ def generate_codes(
     if existing_codes is None:
         existing_codes = set()
     
-    # 默认长度
+    # 默认长度与合法性校验（docs/design/logic/project.md 6.1）
     if length is None:
-        length = 12
+        length = DEFAULT_CODE_LENGTH
+    if length < MIN_CODE_LENGTH or length > MAX_CODE_LENGTH:
+        raise ValueError(f"激活码长度需在 {MIN_CODE_LENGTH}-{MAX_CODE_LENGTH} 之间")
+
+    # 前缀/后缀长度校验
+    if prefix and len(prefix) > MAX_CODE_PREFIX_LENGTH:
+        raise ValueError(f"前缀长度不能超过 {MAX_CODE_PREFIX_LENGTH}")
+    if suffix and len(suffix) > MAX_CODE_SUFFIX_LENGTH:
+        raise ValueError(f"后缀长度不能超过 {MAX_CODE_SUFFIX_LENGTH}")
     
     # 计算实际随机部分长度
     prefix_len = len(prefix) if prefix else 0

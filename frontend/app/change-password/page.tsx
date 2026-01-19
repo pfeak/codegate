@@ -22,6 +22,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { getErrorMessage } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -88,7 +89,13 @@ export default function ChangePasswordPage() {
       // 修改成功，跳转到首页
       router.push('/');
     } catch (err: any) {
-      toast.error(err.message || '密码修改失败');
+      const msg = getErrorMessage(err, '修改失败：请稍后重试');
+      // 与 PRD 约定对齐：失败文案统一使用“修改失败：{detail}”
+      if (msg.startsWith('修改失败：')) {
+        toast.error(msg);
+      } else {
+        toast.error(`修改失败：${msg}`);
+      }
     } finally {
       setLoading(false);
     }

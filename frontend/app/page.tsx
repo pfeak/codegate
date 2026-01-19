@@ -71,7 +71,6 @@ export default function HomePage() {
       {/* 页面标题 */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">项目概览</h1>
-        <p className="mt-2 text-muted-foreground">查看系统整体状态和统计数据</p>
       </div>
 
       {/* 统计卡片 */}

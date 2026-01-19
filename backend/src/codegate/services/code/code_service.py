@@ -114,7 +114,12 @@ class CodeService:
         Returns:
             Optional[InvitationCode]: 激活码对象，不存在返回 None
         """
-        return CodeRepository.get_by_id(db, code_id)
+        code = CodeRepository.get_by_id(db, code_id)
+        if code:
+            changed = CodeService.refresh_expired_state(code)
+            if changed:
+                CodeRepository.update(db, code)
+        return code
 
     @staticmethod
     def get_by_code(db: Session, code: str) -> Optional[InvitationCode]:
@@ -128,14 +133,19 @@ class CodeService:
         Returns:
             Optional[InvitationCode]: 激活码对象，不存在返回 None
         """
-        return CodeRepository.get_by_code(db, code)
+        code_obj = CodeRepository.get_by_code(db, code)
+        if code_obj:
+            changed = CodeService.refresh_expired_state(code_obj)
+            if changed:
+                CodeRepository.update(db, code_obj)
+        return code_obj
 
     @staticmethod
     def get_list(
         db: Session,
         project_id: str,
         page: int = 1,
-        page_size: int = 50,
+        page_size: int = 10,
         status: Optional[bool] = None,
         is_disabled: Optional[bool] = None,
         is_expired: Optional[bool] = None,
@@ -157,7 +167,16 @@ class CodeService:
         Returns:
             tuple[list[InvitationCode], int]: (激活码列表, 总数)
         """
-        return CodeRepository.get_list(db, project_id, page, page_size, status, is_disabled, is_expired, search)
+        codes, total = CodeRepository.get_list(
+            db, project_id, page, page_size, status, is_disabled, is_expired, search
+        )
+        changed = False
+        for code in codes:
+            if CodeService.refresh_expired_state(code):
+                changed = True
+        if changed:
+            db.commit()
+        return codes, total
 
     @staticmethod
     def delete(db: Session, code_id: str) -> bool:
@@ -230,6 +249,8 @@ class CodeService:
         if not code:
             raise CodeNotFoundError(code_id)
 
+        CodeService.refresh_expired_state(code)
+
         # 更新字段
         if update_data.is_disabled is not None:
             # 根据设计文档 code_status_logic.md 第 3.2 节和第 3.3 节：
@@ -299,3 +320,20 @@ class CodeService:
             is_disabled=is_disabled,
             search=search,
         )
+
+    # 内部工具：基于 expires_at / project.expires_at 计算并刷新 is_expired
+    @staticmethod
+    def refresh_expired_state(code: InvitationCode) -> bool:
+        """
+        依据激活码自身/项目的过期时间，刷新 is_expired 字段。
+
+        Returns:
+            bool: 是否发生状态变更
+        """
+        now = datetime.utcnow()
+        expires_at = code.expires_at or (code.project.expires_at if code.project else None)
+        should_expire = bool(expires_at and now > expires_at)
+        if code.is_expired != should_expire:
+            code.is_expired = should_expire
+            return True
+        return False

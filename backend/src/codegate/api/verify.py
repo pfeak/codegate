@@ -83,17 +83,9 @@ def verify_code(
             verified_at=code.verified_at,
         )
     except RateLimitExceededError as e:
-        return VerificationResponse(
-            success=False,
-            message=str(e),
-        )
+        # 速率限制按 429 返回
+        raise HTTPException(status_code=429, detail=str(e))
     except CodeNotFoundError as e:
-        return VerificationResponse(
-            success=False,
-            message=str(e),
-        )
+        raise HTTPException(status_code=400, detail=str(e))
     except (CodeAlreadyVerifiedError, CodeDisabledError, CodeExpiredError, ProjectDisabledError, ProjectExpiredError) as e:
-        return VerificationResponse(
-            success=False,
-            message=str(e),
-        )
+        raise HTTPException(status_code=400, detail=str(e))

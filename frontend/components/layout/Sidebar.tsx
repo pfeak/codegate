@@ -21,44 +21,23 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Folder, CheckCircle, Book, User, Menu, X, LogOut } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { authApi, API_BASE_URL } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [username, setUsername] = useState<string>('-');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const hasRequestedRef = useRef(false);
-  const isLoadingRef = useRef(false);
-
-  useEffect(() => {
-    // 防止重复请求
-    if (hasRequestedRef.current || isLoadingRef.current) {
-      return;
-    }
-
-    isLoadingRef.current = true;
-    // 加载用户信息
-    authApi.me()
-      .then((data) => {
-        setUsername(data.username);
-        hasRequestedRef.current = true;
-      })
-      .catch(() => {
-        // 未登录，忽略错误
-        hasRequestedRef.current = true;
-      })
-      .finally(() => {
-        isLoadingRef.current = false;
-      });
-  }, []);
+  const toast = useToast();
 
   const navItems = [
     { path: '/', label: '首页', icon: Home },
     { path: '/projects', label: '项目管理', icon: Folder },
     { path: '/verify', label: '核销验证', icon: CheckCircle },
     { path: '/docs', label: 'API 文档', icon: Book, external: true },
+    { path: '/profile', label: '个人管理', icon: User },
+    { path: '/logout', label: '登出', icon: LogOut, action: true },
   ];
 
   const isActive = (path: string) => {
@@ -66,6 +45,20 @@ export default function Sidebar() {
       return pathname === '/';
     }
     return pathname.startsWith(path);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+      setIsMobileMenuOpen(false);
+      // PRD：登出成功提示
+      toast.success('已退出登录');
+      router.replace('/login');
+    } catch (error) {
+      console.error('登出失败:', error);
+      // PRD：登出失败提示
+      toast.error('登出失败：请稍后重试');
+    }
   };
 
   return (
@@ -98,11 +91,14 @@ export default function Sidebar() {
         <nav className="flex-1 overflow-y-auto py-4">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = item.external ? false : isActive(item.path);
-            const className = `flex items-center px-4 py-3 text-foreground hover:bg-accent hover:text-accent-foreground transition-colors ${active
-              ? 'bg-accent text-primary border-r-2 border-primary'
-              : ''
-              }`;
+            const active = item.external || item.action ? false : isActive(item.path);
+            const className = [
+              'flex items-center px-4 py-3 rounded-md text-foreground transition-colors',
+              'hover:bg-accent hover:text-accent-foreground',
+              active ? 'bg-accent text-primary border-r-2 border-primary' : '',
+            ]
+              .filter(Boolean)
+              .join(' ');
 
             if (item.external) {
               return (
@@ -112,10 +108,25 @@ export default function Sidebar() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className={className}
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Icon className="h-5 w-5 mr-3" />
                   <span className="text-sm font-medium">{item.label}</span>
                 </a>
+              );
+            }
+
+            if (item.action) {
+              return (
+                <button
+                  key={item.path}
+                  type="button"
+                  onClick={handleLogout}
+                  className={className + ' w-full text-left'}
+                >
+                  <Icon className="h-5 w-5 mr-3" />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </button>
               );
             }
 
@@ -132,35 +143,6 @@ export default function Sidebar() {
             );
           })}
         </nav>
-
-        {/* 底部用户信息 */}
-        <div className="border-t border-border p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-foreground">{username}</span>
-            <Link
-              href="/profile"
-              className="text-sm text-primary hover:text-primary/80"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <User className="h-5 w-5" />
-            </Link>
-          </div>
-          <button
-            onClick={async () => {
-              try {
-                await authApi.logout();
-                router.replace('/login');
-                setIsMobileMenuOpen(false);
-              } catch (error) {
-                console.error('登出失败:', error);
-              }
-            }}
-            className="w-full text-left text-sm text-muted-foreground hover:text-foreground flex items-center gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>登出</span>
-          </button>
-        </div>
       </aside>
 
       {/* 移动端顶部导航栏 */}
