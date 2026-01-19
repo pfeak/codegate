@@ -90,14 +90,15 @@ def require_admin(
 
 @router.post("/login")
 async def login(
-    request: LoginRequest,
+    request: Request,
+    payload: LoginRequest,
     response: Response,
     db: Session = Depends(get_db),
 ):
     """
     管理员登录
     """
-    admin = AuthService.authenticate(db, request)
+    admin = AuthService.authenticate(db, payload)
     if not admin:
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
@@ -107,11 +108,15 @@ async def login(
     _sessions[session_id] = admin.id
 
     # 设置安全Cookie
+    #
+    # - 仅在 HTTPS 场景下设置 secure=True，避免在本地 HTTP / 测试环境下 Cookie 无法回传导致 401
+    # - 如需在反向代理后正确识别 HTTPS，请配合 ProxyHeadersMiddleware 或正确设置 scheme
+    secure_cookie = request.url.scheme == "https"
     response.set_cookie(
         key="session_id",
         value=session_id,
         httponly=True,
-        secure=True,  # HTTPS环境
+        secure=secure_cookie,
         samesite="strict",
         max_age=86400 * 7,  # 7天
     )
@@ -120,6 +125,8 @@ async def login(
     return {
         "success": True,
         "message": "登录成功",
+        # 兼容非浏览器/测试场景：允许通过 Bearer Token 方式携带 session_id
+        "token": session_id,
         "admin": admin_response,
         "is_initial_password": admin.is_initial_password,
     }
@@ -137,7 +144,8 @@ async def logout(
     if session_id and session_id in _sessions:
         del _sessions[session_id]
 
-    response.delete_cookie(key="session_id", httponly=True, secure=True, samesite="strict")
+    secure_cookie = request.url.scheme == "https"
+    response.delete_cookie(key="session_id", httponly=True, secure=secure_cookie, samesite="strict")
     return {"success": True, "message": "登出成功"}
 
 

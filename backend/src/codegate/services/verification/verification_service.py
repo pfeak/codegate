@@ -126,7 +126,7 @@ class VerificationService:
     @staticmethod
     def _log_verification(
         db: Session,
-        code_id: Optional[int],
+        code_id: Optional[str],
         success: bool,
         reason: Optional[str],
         ip_address: Optional[str],
@@ -145,6 +145,11 @@ class VerificationService:
             user_agent: 用户代理
             verified_by: 核销用户
         """
+        # 设计/表结构约束：verification_logs.code_id 为非空外键
+        # 因此当激活码不存在时（code_id=None）无法写入核销日志，直接跳过即可。
+        if code_id is None:
+            return
+
         log = VerificationLog(
             code_id=code_id,
             verified_at=datetime.utcnow(),
@@ -159,7 +164,7 @@ class VerificationService:
     @staticmethod
     def get_logs(
         db: Session,
-        code_id: Optional[int] = None,
+        code_id: Optional[str] = None,
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[VerificationLog], int]:

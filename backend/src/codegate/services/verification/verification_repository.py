@@ -44,7 +44,7 @@ class VerificationRepository:
     @staticmethod
     def get_list(
         db: Session,
-        code_id: Optional[int] = None,
+        code_id: Optional[str] = None,
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[VerificationLog], int]:
@@ -62,7 +62,7 @@ class VerificationRepository:
         """
         query = db.query(VerificationLog)
 
-        if code_id:
+        if code_id is not None:
             query = query.filter(VerificationLog.code_id == code_id)
 
         total = query.count()
