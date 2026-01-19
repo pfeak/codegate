@@ -22,8 +22,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
-from filelock import FileLock
 
 from .config import settings
 
@@ -40,15 +38,16 @@ if database_url.startswith("sqlite"):
     if db_path != Path(":memory:"):
         db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 使用 StaticPool 和 WAL 模式
+    # 使用默认连接池 + WAL 模式，依赖 SQLite 自身的文件锁来处理并发
+    # 避免使用 StaticPool + 进程级 FileLock 导致请求串行化和超时
     engine = create_engine(
         database_url,
         connect_args={
             "check_same_thread": False,
             "timeout": 30,
         },
-        poolclass=StaticPool,
         echo=settings.DATABASE_ECHO,
+        pool_pre_ping=True,
     )
 
     # 启用 WAL 模式
@@ -69,16 +68,6 @@ else:
 # 创建会话工厂
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 数据库锁（用于 SQLite 并发控制）
-_db_lock_path = None
-if database_url.startswith("sqlite") and not database_url.endswith(":memory:"):
-    db_path = Path(database_url.replace("sqlite:///", ""))
-    _db_lock_path = db_path.parent / f"{db_path.stem}.lock"
-
-_db_lock = None
-if _db_lock_path:
-    _db_lock = FileLock(_db_lock_path, timeout=30)
-
 
 # 数据库基类
 
@@ -95,18 +84,11 @@ def get_db() -> Session:
     Yields:
         Session: 数据库会话
     """
-    if _db_lock:
-        _db_lock.acquire()
-
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
+        yield db
     finally:
-        if _db_lock:
-            _db_lock.release()
+        db.close()
 
 
 @contextmanager
@@ -117,22 +99,15 @@ def get_db_context():
     Yields:
         Session: 数据库会话
     """
-    if _db_lock:
-        _db_lock.acquire()
-
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            yield db
-            db.commit()
-        except Exception:
-            db.rollback()
-            raise
-        finally:
-            db.close()
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     finally:
-        if _db_lock:
-            _db_lock.release()
+        db.close()
 
 
 def init_db():

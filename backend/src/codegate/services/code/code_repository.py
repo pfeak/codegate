@@ -78,6 +78,7 @@ class CodeRepository:
         page_size: int = 50,
         status: Optional[bool] = None,
         is_disabled: Optional[bool] = None,
+        is_expired: Optional[bool] = None,
         search: Optional[str] = None,
     ) -> tuple[list[InvitationCode], int]:
         """
@@ -90,6 +91,7 @@ class CodeRepository:
             page_size: 每页数量
             status: 状态筛选（True=已核销, False=未核销）
             is_disabled: 是否禁用筛选（True=已禁用, False=未禁用）
+            is_expired: 是否过期筛选（True=已过期, False=未过期）
             search: 搜索关键词（激活码）
 
         Returns:
@@ -104,6 +106,10 @@ class CodeRepository:
         # 禁用状态筛选
         if is_disabled is not None:
             query = query.filter(InvitationCode.is_disabled == is_disabled)
+
+        # 过期状态筛选
+        if is_expired is not None:
+            query = query.filter(InvitationCode.is_expired == is_expired)
 
         # 搜索筛选
         if search:

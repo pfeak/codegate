@@ -68,8 +68,7 @@ export default function ProjectDetailPage() {
   const [codes, setCodes] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<string>('');
-  const [isDisabled, setIsDisabled] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>(''); // 统一的状态筛选：''=全部, 'unused'=未使用, 'used'=已使用, 'disabled'=已禁用, 'expired'=已过期
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [codesLoading, setCodesLoading] = useState(false);
@@ -90,7 +89,7 @@ export default function ProjectDetailPage() {
       loadProject();
       loadCodes();
     }
-  }, [projectId, page, status, isDisabled, search]);
+  }, [projectId, page, statusFilter, search]);
 
   useEffect(() => {
     if (!showBatchDisableDialog) return;
@@ -133,11 +132,44 @@ export default function ProjectDetailPage() {
   const loadCodes = async () => {
     setCodesLoading(true);
     try {
+      // 根据统一的状态筛选值转换为 API 参数
+      let status: boolean | undefined = undefined;
+      let is_disabled: boolean | undefined = undefined;
+      let is_expired: boolean | undefined = undefined;
+
+      switch (statusFilter) {
+        case 'unused':
+          // 未使用：status=false 且 is_disabled=false 且 is_expired=false
+          status = false;
+          is_disabled = false;
+          is_expired = false;
+          break;
+        case 'used':
+          // 已使用：status=true 且 is_disabled=false 且 is_expired=false
+          status = true;
+          is_disabled = false;
+          is_expired = false;
+          break;
+        case 'disabled':
+          // 已禁用：is_disabled=true 且 is_expired=false
+          is_disabled = true;
+          is_expired = false;
+          break;
+        case 'expired':
+          // 已过期：is_expired=true
+          is_expired = true;
+          break;
+        default:
+          // 全部：不设置任何筛选条件
+          break;
+      }
+
       const data = await codesApi.list(projectId, {
         page,
         page_size: pageSize,
-        status: status ? status === 'true' : undefined,
-        is_disabled: isDisabled ? isDisabled === 'true' : undefined,
+        status,
+        is_disabled,
+        is_expired,
         search: search || undefined,
       });
       setCodes(data.items);
@@ -476,30 +508,18 @@ export default function ProjectDetailPage() {
             </div>
             <div className="sm:w-48">
               <select
-                value={status}
+                value={statusFilter}
                 onChange={(e) => {
-                  setStatus(e.target.value);
-                  setPage(1);
-                }}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">全部状态</option>
-                <option value="true">已使用</option>
-                <option value="false">未使用</option>
-              </select>
-            </div>
-            <div className="sm:w-48">
-              <select
-                value={isDisabled}
-                onChange={(e) => {
-                  setIsDisabled(e.target.value);
+                  setStatusFilter(e.target.value);
                   setPage(1);
                 }}
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">全部</option>
-                <option value="true">已禁用</option>
-                <option value="false">未禁用</option>
+                <option value="unused">未使用</option>
+                <option value="used">已使用</option>
+                <option value="disabled">已禁用</option>
+                <option value="expired">已过期</option>
               </select>
             </div>
           </div>
@@ -561,25 +581,32 @@ export default function ProjectDetailPage() {
                       <TableCell className="text-gray-700">{timestampToLocal(code.created_at)}</TableCell>
                       <TableCell className="text-right">
                         <div className="inline-flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleCodeStatus(code.id, code.is_disabled)}
-                            className="text-indigo-600 hover:text-indigo-700"
-                            title={code.is_disabled ? '启用' : '禁用'}
-                          >
-                            {code.is_disabled ? (
-                              <>
-                                <Power className="h-4 w-4" />
-                                启用
-                              </>
-                            ) : (
-                              <>
-                                <PowerOff className="h-4 w-4" />
-                                禁用
-                              </>
-                            )}
-                          </Button>
+                          {/* 禁用按钮：仅对"未使用且未禁用且未过期"的激活码显示 */}
+                          {!code.status && !code.is_disabled && !code.is_expired && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleCodeStatus(code.id, code.is_disabled)}
+                              className="text-indigo-600 hover:text-indigo-700"
+                              title="禁用"
+                            >
+                              <PowerOff className="h-4 w-4" />
+                              禁用
+                            </Button>
+                          )}
+                          {/* 启用按钮：仅对"已禁用且未过期"的激活码显示 */}
+                          {code.is_disabled && !code.is_expired && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleCodeStatus(code.id, code.is_disabled)}
+                              className="text-indigo-600 hover:text-indigo-700"
+                              title="启用"
+                            >
+                              <Power className="h-4 w-4" />
+                              启用
+                            </Button>
+                          )}
                           {code.status && !code.is_disabled && !code.is_expired && (
                             <Button
                               variant="ghost"

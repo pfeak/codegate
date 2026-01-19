@@ -64,6 +64,7 @@ def get_codes(
     page_size: int = Query(50, ge=1, le=100, description="每页数量"),
     status: Optional[bool] = Query(None, description="状态筛选（True=已使用, False=未使用）"),
     is_disabled: Optional[bool] = Query(None, description="是否禁用筛选（True=已禁用, False=未禁用）"),
+    is_expired: Optional[bool] = Query(None, description="是否过期筛选（True=已过期, False=未过期）"),
     search: Optional[str] = Query(None, description="搜索关键词"),
     db: Session = Depends(get_db),
     current_admin: AdminResponse = Depends(require_admin),
@@ -83,6 +84,7 @@ def get_codes(
         page_size=page_size,
         status=status,
         is_disabled=is_disabled,
+        is_expired=is_expired,
         search=search,
     )
 

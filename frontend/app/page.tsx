@@ -21,7 +21,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
-import { dashboardApi } from '@/lib/api';
+import { dashboardApi, RecentVerification } from '@/lib/api';
 import { timestampToLocal, formatNumber } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -40,14 +40,7 @@ export default function HomePage() {
     verified_count: 0,
     unverified_count: 0,
   });
-  const [recentVerifications, setRecentVerifications] = useState<
-    Array<{
-      code: string;
-      project_name: string;
-      verified_at: number;
-      verified_by: string | null;
-    }>
-  >([]);
+  const [recentVerifications, setRecentVerifications] = useState<RecentVerification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
