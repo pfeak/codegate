@@ -19,13 +19,14 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Home, Folder, CheckCircle, Book, User, Menu, X, LogOut } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { authApi, API_BASE_URL } from '@/lib/api';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [username, setUsername] = useState<string>('-');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const hasRequestedRef = useRef(false);
@@ -148,7 +149,8 @@ export default function Sidebar() {
             onClick={async () => {
               try {
                 await authApi.logout();
-                window.location.href = '/login';
+                router.replace('/login');
+                setIsMobileMenuOpen(false);
               } catch (error) {
                 console.error('登出失败:', error);
               }

@@ -18,7 +18,7 @@
 
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
@@ -81,15 +81,107 @@ export default function ProjectDetailPage() {
   const [selectedCodeId, setSelectedCodeId] = useState<string | null>(null);
   const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
   const [showEditProjectDialog, setShowEditProjectDialog] = useState(false);
+  const [showCodeDetailDialog, setShowCodeDetailDialog] = useState(false);
+  const [codeDetailLoading, setCodeDetailLoading] = useState(false);
+  const [codeDetail, setCodeDetail] = useState<any | null>(null);
+  const [sortBy, setSortBy] = useState<'created_at' | 'verified_at'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const pageSize = 50;
+
+  const filterParams = useCallback((filter: string) => {
+    let status: boolean | undefined = undefined;
+    let is_disabled: boolean | undefined = undefined;
+    let is_expired: boolean | undefined = undefined;
+
+    switch (filter) {
+      case 'unused':
+        status = false;
+        is_disabled = false;
+        is_expired = false;
+        break;
+      case 'used':
+        status = true;
+        is_disabled = false;
+        is_expired = false;
+        break;
+      case 'disabled':
+        is_disabled = true;
+        is_expired = false;
+        break;
+      case 'expired':
+        is_expired = true;
+        break;
+      default:
+        break;
+    }
+    return { status, is_disabled, is_expired };
+  }, []);
+
+  const applySort = useCallback(
+    (list: any[]) => {
+      const sorted = [...list].sort((a, b) => {
+        const key = sortBy;
+        const av = a[key] ?? 0;
+        const bv = b[key] ?? 0;
+        if (av === bv) return 0;
+        const diff = av > bv ? 1 : -1;
+        return sortOrder === 'asc' ? diff : -diff;
+      });
+      return sorted;
+    },
+    [sortBy, sortOrder],
+  );
+
+  const loadProject = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await projectsApi.get(projectId);
+      setProject(data);
+    } catch (error: any) {
+      toast.error(error.message || '加载项目信息失败');
+      router.push('/projects');
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId, router, toast]);
+
+  const loadCodes = useCallback(async () => {
+    setCodesLoading(true);
+    try {
+      const { status, is_disabled, is_expired } = filterParams(statusFilter);
+      const data = await codesApi.list(projectId, {
+        page,
+        page_size: pageSize,
+        status,
+        is_disabled,
+        is_expired,
+        search: search || undefined,
+      });
+      setCodes(applySort(data.items));
+      setTotal(data.total);
+    } catch (error: any) {
+      toast.error(error.message || '加载激活码列表失败');
+    } finally {
+      setCodesLoading(false);
+    }
+  }, [applySort, filterParams, page, pageSize, projectId, search, statusFilter, toast]);
 
   useEffect(() => {
     if (projectId) {
       loadProject();
+    }
+  }, [projectId, loadProject]);
+
+  useEffect(() => {
+    if (projectId) {
       loadCodes();
     }
-  }, [projectId, page, statusFilter, search]);
+  }, [projectId, loadCodes]);
+
+  useEffect(() => {
+    setCodes((prev) => applySort(prev));
+  }, [applySort]);
 
   useEffect(() => {
     if (!showBatchDisableDialog) return;
@@ -97,8 +189,14 @@ export default function ProjectDetailPage() {
     setBatchDisableCount(null);
     setBatchDisableCountLoading(true);
 
+    const { status, is_disabled, is_expired } = filterParams(statusFilter);
     codesApi
-      .batchDisableUnusedCount(projectId, { search: search || undefined })
+      .batchDisableUnusedCount(projectId, {
+        search: search || undefined,
+        status,
+        is_disabled,
+        is_expired,
+      })
       .then((res) => {
         if (cancelled) return;
         setBatchDisableCount(res.count);
@@ -115,70 +213,15 @@ export default function ProjectDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [showBatchDisableDialog, projectId, search]);
+  }, [filterParams, projectId, search, showBatchDisableDialog, statusFilter]);
 
-  const loadProject = async () => {
-    try {
-      const data = await projectsApi.get(projectId);
-      setProject(data);
-    } catch (error: any) {
-      toast.error(error.message || '加载项目信息失败');
-      router.push('/projects');
-    } finally {
-      setLoading(false);
-    }
+  const upsertCodeInList = (nextCode: any) => {
+    setCodes((prev) => prev.map((item) => (item.id === nextCode.id ? { ...item, ...nextCode } : item)));
   };
 
-  const loadCodes = async () => {
-    setCodesLoading(true);
-    try {
-      // 根据统一的状态筛选值转换为 API 参数
-      let status: boolean | undefined = undefined;
-      let is_disabled: boolean | undefined = undefined;
-      let is_expired: boolean | undefined = undefined;
-
-      switch (statusFilter) {
-        case 'unused':
-          // 未使用：status=false 且 is_disabled=false 且 is_expired=false
-          status = false;
-          is_disabled = false;
-          is_expired = false;
-          break;
-        case 'used':
-          // 已使用：status=true 且 is_disabled=false 且 is_expired=false
-          status = true;
-          is_disabled = false;
-          is_expired = false;
-          break;
-        case 'disabled':
-          // 已禁用：is_disabled=true 且 is_expired=false
-          is_disabled = true;
-          is_expired = false;
-          break;
-        case 'expired':
-          // 已过期：is_expired=true
-          is_expired = true;
-          break;
-        default:
-          // 全部：不设置任何筛选条件
-          break;
-      }
-
-      const data = await codesApi.list(projectId, {
-        page,
-        page_size: pageSize,
-        status,
-        is_disabled,
-        is_expired,
-        search: search || undefined,
-      });
-      setCodes(data.items);
-      setTotal(data.total);
-    } catch (error: any) {
-      toast.error(error.message || '加载激活码列表失败');
-    } finally {
-      setCodesLoading(false);
-    }
+  const removeCodeFromList = (codeId: string) => {
+    setCodes((prev) => prev.filter((item) => item.id !== codeId));
+    setTotal((prev) => Math.max(0, prev - 1));
   };
 
   const handleGenerate = async (e: FormEvent<HTMLFormElement>) => {
@@ -194,7 +237,8 @@ export default function ProjectDetailPage() {
       });
       toast.success(`成功生成 ${count} 个激活码`);
       setShowGenerateDialog(false);
-      loadCodes();
+      // 操作成功后，按 PRD 要求重新拉取激活码列表（局部刷新）
+      await loadCodes();
     } catch (error: any) {
       toast.error(error.message || '生成激活码失败');
     }
@@ -204,7 +248,8 @@ export default function ProjectDetailPage() {
     try {
       await codesApi.update(codeId, { is_disabled: !currentDisabled });
       toast.success('操作成功');
-      loadCodes();
+      // 为保证筛选/统计等完全一致，操作后重新加载列表
+      await loadCodes();
     } catch (error: any) {
       toast.error(error.message || '操作失败');
     }
@@ -214,9 +259,25 @@ export default function ProjectDetailPage() {
     try {
       await codesApi.reactivate(codeId);
       toast.success('重新激活成功');
-      loadCodes();
+      // 重新拉取激活码列表，确保状态/统计同步
+      await loadCodes();
     } catch (error: any) {
       toast.error(error.message || '操作失败');
+    }
+  };
+
+  const handleViewCodeDetail = async (codeId: string) => {
+    setSelectedCodeId(codeId);
+    setShowCodeDetailDialog(true);
+    setCodeDetailLoading(true);
+    try {
+      const detail = await codesApi.get(projectId, codeId);
+      setCodeDetail(detail);
+    } catch (error: any) {
+      toast.error(error.message || '加载激活码详情失败');
+      setShowCodeDetailDialog(false);
+    } finally {
+      setCodeDetailLoading(false);
     }
   };
 
@@ -227,7 +288,8 @@ export default function ProjectDetailPage() {
       toast.success('删除成功');
       setShowDeleteCodeDialog(false);
       setSelectedCodeId(null);
-      loadCodes();
+      // 简化为重新请求列表，避免本地分页/筛选逻辑出错
+      await loadCodes();
     } catch (error: any) {
       toast.error(error.message || '删除失败');
     }
@@ -235,9 +297,16 @@ export default function ProjectDetailPage() {
 
   const handleBatchDisableUnused = async () => {
     try {
-      const res = await codesApi.batchDisableUnused(projectId, { search: search || undefined });
+      const { status, is_disabled, is_expired } = filterParams(statusFilter);
+      const res = await codesApi.batchDisableUnused(projectId, {
+        search: search || undefined,
+        status,
+        is_disabled,
+        is_expired,
+      });
       toast.success(res.message || '批量禁用成功');
-      loadCodes();
+      // 批量操作后，直接按当前筛选条件重新拉取列表
+      await loadCodes();
     } catch (error: any) {
       toast.error(error.message || '批量禁用失败');
     }
@@ -246,9 +315,9 @@ export default function ProjectDetailPage() {
   const handleToggleProjectStatus = async () => {
     if (!project) return;
     try {
-      await projectsApi.update(project.id, { status: !project.status });
+      const updated = await projectsApi.update(project.id, { status: !project.status });
       toast.success('项目状态已更新');
-      loadProject();
+      setProject(updated);
     } catch (error: any) {
       toast.error(error.message || '操作失败');
     }
@@ -275,7 +344,7 @@ export default function ProjectDetailPage() {
     const statusChecked = (formData.get('status') as string) === 'on';
 
     try {
-      await projectsApi.update(project.id, {
+      const updated = await projectsApi.update(project.id, {
         name: name.trim(),
         description: description.trim() || null,
         expires_at: expiresAt ? dateTimeLocalToTimestamp(expiresAt) : null,
@@ -283,7 +352,7 @@ export default function ProjectDetailPage() {
       });
       toast.success('项目已更新');
       setShowEditProjectDialog(false);
-      loadProject();
+      setProject(updated);
     } catch (error: any) {
       toast.error(error.message || '更新失败');
     }
@@ -528,9 +597,33 @@ export default function ProjectDetailPage() {
                   <TableHead className="w-[140px]">ID</TableHead>
                   <TableHead className="w-[240px]">激活码</TableHead>
                   <TableHead className="w-[120px]">状态</TableHead>
-                  <TableHead className="w-[180px]">核销时间</TableHead>
+                  <TableHead className="w-[180px]">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-sm font-medium text-foreground"
+                      onClick={() => {
+                        setSortBy('verified_at');
+                        setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+                      }}
+                    >
+                      核销时间
+                      {sortBy === 'verified_at' ? (sortOrder === 'desc' ? '↓' : '↑') : ''}
+                    </button>
+                  </TableHead>
                   <TableHead className="w-[160px]">核销用户</TableHead>
-                  <TableHead className="w-[180px]">创建时间</TableHead>
+                  <TableHead className="w-[180px]">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-sm font-medium text-foreground"
+                      onClick={() => {
+                        setSortBy('created_at');
+                        setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+                      }}
+                    >
+                      创建时间
+                      {sortBy === 'created_at' ? (sortOrder === 'desc' ? '↓' : '↑') : ''}
+                    </button>
+                  </TableHead>
                   <TableHead className="w-[240px] text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -577,6 +670,13 @@ export default function ProjectDetailPage() {
                       <TableCell className="text-foreground">{timestampToLocal(code.created_at)}</TableCell>
                       <TableCell className="text-right">
                         <div className="inline-flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewCodeDetail(code.id)}
+                          >
+                            查看详情
+                          </Button>
                           {/* 禁用按钮：仅对"未使用且未禁用且未过期"的激活码显示 */}
                           {!code.status && !code.is_disabled && !code.is_expired && (
                             <Button
@@ -840,6 +940,65 @@ export default function ProjectDetailPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 激活码详情弹框 */}
+      <Dialog
+        open={showCodeDetailDialog}
+        onOpenChange={(open) => {
+          setShowCodeDetailDialog(open);
+          if (!open) {
+            setSelectedCodeId(null);
+            setCodeDetail(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>激活码详情</DialogTitle>
+          </DialogHeader>
+          {codeDetailLoading ? (
+            <div className="text-muted-foreground">加载中...</div>
+          ) : codeDetail ? (
+            <div className="space-y-3 text-sm text-foreground">
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">ID</span>
+                <span className="font-mono break-all">{codeDetail.id}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">激活码</span>
+                <span className="font-mono break-all">{codeDetail.code}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">状态</span>
+                <span>{getCodeStatusBadge(codeDetail)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">核销时间</span>
+                <span>{codeDetail.verified_at ? timestampToLocal(codeDetail.verified_at) : '-'}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">核销用户</span>
+                <span>{codeDetail.verified_by || '-'}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">创建时间</span>
+                <span>{timestampToLocal(codeDetail.created_at)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">过期时间</span>
+                <span>{codeDetail.expires_at ? timestampToLocal(codeDetail.expires_at) : '未设置'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-muted-foreground">暂无数据</div>
+          )}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setShowCodeDetailDialog(false)}>
+              关闭
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </MainLayout>

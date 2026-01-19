@@ -20,6 +20,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const checkingRef = useRef(false);
   const lastPathRef = useRef<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
   useEffect(() => {
     if (!pathname) return;
@@ -38,7 +39,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     checkingRef.current = true;
     const currentPath = pathname;
     lastPathRef.current = currentPath;
-    setReady(false);
+    // 只有首屏初始化时才遮罩全屏，后续路由切换不再闪屏
+    if (!hasInitializedRef.current) {
+      setReady(false);
+    }
 
     let cancelled = false;
 
@@ -59,6 +63,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           // 已登录，跳转到正确页面
           router.replace(me.is_initial_password ? "/change-password" : "/");
           checkingRef.current = false;
+          hasInitializedRef.current = true;
           return;
         } catch {
           // 未登录，允许访问登录页
@@ -70,6 +75,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           }
 
           setReady(true);
+          hasInitializedRef.current = true;
           checkingRef.current = false;
           return;
         }
@@ -91,6 +97,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         if (me.is_initial_password && currentPath !== "/change-password") {
           router.replace("/change-password");
           checkingRef.current = false;
+          hasInitializedRef.current = true;
           return;
         }
 
@@ -98,10 +105,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         if (!me.is_initial_password && currentPath === "/change-password") {
           router.replace("/");
           checkingRef.current = false;
+          hasInitializedRef.current = true;
           return;
         }
 
         setReady(true);
+        hasInitializedRef.current = true;
         checkingRef.current = false;
       } catch {
         // 未登录，跳转到登录页
@@ -114,6 +123,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
         router.replace("/login");
         checkingRef.current = false;
+        hasInitializedRef.current = true;
       }
     };
 

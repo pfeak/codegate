@@ -18,8 +18,9 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { dashboardApi, RecentVerification } from '@/lib/api';
 import { timestampToLocal, formatNumber } from '@/lib/utils';
@@ -34,6 +35,7 @@ import {
 } from '@/components/ui/table';
 
 export default function HomePage() {
+  const router = useRouter();
   const [stats, setStats] = useState({
     project_count: 0,
     code_count: 0,
@@ -43,11 +45,7 @@ export default function HomePage() {
   const [recentVerifications, setRecentVerifications] = useState<RecentVerification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const data = await dashboardApi.overview();
       setStats({
@@ -62,7 +60,11 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   return (
     <MainLayout>
@@ -86,36 +88,42 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </Link>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">激活码总数</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {loading ? '-' : formatNumber(stats.code_count)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">已使用数量</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {loading ? '-' : formatNumber(stats.verified_count)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">未使用数量</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {loading ? '-' : formatNumber(stats.unverified_count)}
-            </div>
-          </CardContent>
-        </Card>
+        <Link href="/projects" className="block">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">激活码总数</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {loading ? '-' : formatNumber(stats.code_count)}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/verify" className="block">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">已使用数量</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {loading ? '-' : formatNumber(stats.verified_count)}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/projects" className="block">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">未使用数量</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {loading ? '-' : formatNumber(stats.unverified_count)}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* 最近核销记录 */}
@@ -149,15 +157,15 @@ export default function HomePage() {
                   </TableRow>
                 ) : (
                   recentVerifications.map((log, index) => (
-                    <TableRow
-                      key={index}
-                      className="cursor-pointer"
-                      onClick={() => {
-                        if (log.project_id) {
-                          window.location.href = `/projects/${log.project_id}`;
-                        }
-                      }}
-                    >
+                  <TableRow
+                    key={index}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      if (log.project_id) {
+                        router.push(`/projects/${log.project_id}`);
+                      }
+                    }}
+                  >
                       <TableCell className="font-mono">{log.code}</TableCell>
                       <TableCell className="text-foreground">{log.project_name || '-'}</TableCell>
                       <TableCell className="text-foreground">{timestampToLocal(log.verified_at)}</TableCell>

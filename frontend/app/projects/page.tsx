@@ -18,8 +18,9 @@
 
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { projectsApi } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
@@ -58,12 +59,24 @@ import {
 } from '@/components/ui/table';
 
 export default function ProjectsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
+
+  const initialPage = useMemo(() => {
+    const p = Number(searchParams.get('page') || '1');
+    return Number.isFinite(p) && p > 0 ? p : 1;
+  }, [searchParams]);
+
+  const initialSearch = useMemo(() => searchParams.get('search') || '', [searchParams]);
+  const initialStatus = useMemo(() => searchParams.get('status') || '', [searchParams]);
+
   const [projects, setProjects] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<string>('');
+  const [page, setPage] = useState(initialPage);
+  const [search, setSearch] = useState(initialSearch);
+  const [status, setStatus] = useState<string>(initialStatus);
+  const [pageInput, setPageInput] = useState(String(initialPage));
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -73,11 +86,24 @@ export default function ProjectsPage() {
 
   const pageSize = 20;
 
-  useEffect(() => {
-    loadProjects();
-  }, [page, search, status]);
+  const syncQuery = useCallback(
+    (next: { page?: number; search?: string; status?: string }) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next.page !== undefined) {
+        params.set('page', String(next.page));
+      }
+      if (next.search !== undefined) {
+        next.search ? params.set('search', next.search) : params.delete('search');
+      }
+      if (next.status !== undefined) {
+        next.status ? params.set('status', next.status) : params.delete('status');
+      }
+      router.replace(`?${params.toString()}`);
+    },
+    [router, searchParams],
+  );
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     setLoading(true);
     try {
       const data = await projectsApi.list({
@@ -93,12 +119,43 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false);
     }
+  }, [page, search, status, toast]);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
+  useEffect(() => {
+    setPageInput(String(page));
+  }, [page]);
+
+  useEffect(() => {
+    setPage(initialPage);
+    setPageInput(String(initialPage));
+    setSearch(initialSearch);
+    setStatus(initialStatus);
+  }, [initialPage, initialSearch, initialStatus]);
+
+  const replaceProjectInList = (nextProject: any) => {
+    setProjects((prev) => prev.map((item) => (item.id === nextProject.id ? { ...item, ...nextProject } : item)));
+  };
+
+  const removeProjectFromList = (projectId: string) => {
+    setProjects((prev) => prev.filter((item) => item.id !== projectId));
+    setTotal((prev) => Math.max(0, prev - 1));
   };
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     setPage(1);
-    loadProjects();
+    syncQuery({ page: 1, search, status });
+  };
+
+  const goToPage = (nextPage: number) => {
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const safePage = Math.min(Math.max(1, nextPage), totalPages || 1);
+    setPage(safePage);
+    syncQuery({ page: safePage, search, status });
   };
 
   const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
@@ -109,14 +166,17 @@ export default function ProjectsPage() {
     const expiresAt = formData.get('expires_at') as string;
 
     try {
-      await projectsApi.create({
+      const created = await projectsApi.create({
         name: name.trim(),
         description: description.trim() || null,
         expires_at: expiresAt ? dateTimeLocalToTimestamp(expiresAt) : null,
       });
       toast.success('创建成功');
       setShowCreateModal(false);
-      loadProjects();
+      setPage(1);
+      syncQuery({ page: 1, search, status });
+      setProjects((prev) => [created, ...prev].slice(0, pageSize));
+      setTotal((prev) => prev + 1);
     } catch (error: any) {
       toast.error(error.message || '创建失败');
     }
@@ -133,7 +193,7 @@ export default function ProjectsPage() {
     const status = (formData.get('status') as string) === 'on';
 
     try {
-      await projectsApi.update(editingProject.id, {
+      const updated = await projectsApi.update(editingProject.id, {
         name: name.trim(),
         description: description.trim() || null,
         expires_at: expiresAt ? dateTimeLocalToTimestamp(expiresAt) : null,
@@ -142,7 +202,7 @@ export default function ProjectsPage() {
       toast.success('更新成功');
       setShowEditModal(false);
       setEditingProject(null);
-      loadProjects();
+      replaceProjectInList(updated);
     } catch (error: any) {
       toast.error(error.message || '更新失败');
     }
@@ -156,7 +216,13 @@ export default function ProjectsPage() {
       toast.success('删除成功');
       setShowDeleteModal(false);
       setDeletingProjectId(null);
-      loadProjects();
+      const isLastItemOnPage = projects.length === 1 && page > 1;
+      removeProjectFromList(deletingProjectId);
+      if (isLastItemOnPage) {
+        const nextPage = Math.max(1, page - 1);
+        setPage(nextPage);
+        syncQuery({ page: nextPage, search, status });
+      }
     } catch (error: any) {
       toast.error(error.message || '删除失败');
     }
@@ -164,9 +230,9 @@ export default function ProjectsPage() {
 
   const handleToggleStatus = async (projectId: string, currentStatus: boolean) => {
     try {
-      await projectsApi.update(projectId, { status: !currentStatus });
+      const updated = await projectsApi.update(projectId, { status: !currentStatus });
       toast.success('状态更新成功');
-      loadProjects();
+      replaceProjectInList(updated);
     } catch (error: any) {
       toast.error(error.message || '操作失败');
     }
@@ -211,6 +277,7 @@ export default function ProjectsPage() {
                 onChange={(e) => {
                   setStatus(e.target.value);
                   setPage(1);
+                  syncQuery({ page: 1, search, status: e.target.value });
                 }}
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
@@ -354,7 +421,7 @@ export default function ProjectsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(page - 1)}
+                  onClick={() => goToPage(page - 1)}
                   disabled={page === 1}
                 >
                   上一页
@@ -369,7 +436,7 @@ export default function ProjectsPage() {
                       key={pageNum}
                       variant={isCurrent ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setPage(pageNum)}
+                      onClick={() => goToPage(pageNum)}
                     >
                       {pageNum}
                     </Button>
@@ -378,11 +445,32 @@ export default function ProjectsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(page + 1)}
+                  onClick={() => goToPage(page + 1)}
                   disabled={page === totalPages}
                 >
                   下一页
                 </Button>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={Math.max(1, totalPages)}
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value)}
+                    className="h-9 w-20"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const target = Number(pageInput);
+                      if (Number.isNaN(target)) return;
+                      goToPage(target);
+                    }}
+                  >
+                    跳转
+                  </Button>
+                </div>
               </div>
             )}
           </div>
