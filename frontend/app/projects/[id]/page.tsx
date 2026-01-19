@@ -364,8 +364,9 @@ export default function ProjectDetailPage() {
       return <Badge variant="destructive">已过期</Badge>;
     }
     if (code.is_disabled) {
+      // 已禁用：中性灰调，避免与未使用同色
       return (
-        <Badge variant="secondary">
+        <Badge variant="secondary" className="bg-muted text-muted-foreground border-border">
           已禁用
         </Badge>
       );
@@ -377,7 +378,12 @@ export default function ProjectDetailPage() {
         </Badge>
       );
     }
-    return <Badge variant="secondary">未使用</Badge>;
+    // 未使用：浅色描边，和禁用区分
+    return (
+      <Badge variant="outline" className="border-primary/30 text-primary/80">
+        未使用
+      </Badge>
+    );
   };
 
   const totalPages = Math.ceil(total / pageSize);
