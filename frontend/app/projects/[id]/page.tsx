@@ -296,14 +296,14 @@ export default function ProjectDetailPage() {
     }
     if (code.is_disabled) {
       return (
-        <Badge className="bg-yellow-100 text-yellow-800 border-transparent">
+        <Badge variant="secondary">
           已禁用
         </Badge>
       );
     }
     if (code.status) {
       return (
-        <Badge className="bg-green-100 text-green-800 border-transparent">
+        <Badge variant="default">
           已使用
         </Badge>
       );
@@ -317,7 +317,7 @@ export default function ProjectDetailPage() {
     return (
       <MainLayout>
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-gray-500">加载中...</div>
+          <div className="text-muted-foreground">加载中...</div>
         </div>
       </MainLayout>
     );
@@ -327,7 +327,7 @@ export default function ProjectDetailPage() {
     return (
       <MainLayout>
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-gray-500">项目不存在</div>
+          <div className="text-muted-foreground">项目不存在</div>
         </div>
       </MainLayout>
     );
@@ -337,21 +337,21 @@ export default function ProjectDetailPage() {
     <MainLayout>
       {/* 面包屑 + 返回 */}
       <div className="mb-6 space-y-2">
-        <div className="text-sm text-gray-500">
-          <Link href="/" className="hover:text-gray-700">
+        <div className="text-sm text-muted-foreground">
+          <Link href="/" className="hover:text-foreground">
             首页
           </Link>{' '}
           /{' '}
-          <Link href="/projects" className="hover:text-gray-700">
+          <Link href="/projects" className="hover:text-foreground">
             项目管理
           </Link>{' '}
-          / <span className="text-gray-700">项目详情</span>
+          / <span className="text-foreground">项目详情</span>
         </div>
-        <Link href="/projects" className="inline-flex items-center text-indigo-600 hover:text-indigo-700">
+        <Link href="/projects" className="inline-flex items-center text-primary hover:text-primary/80">
           <ArrowLeft className="h-4 w-4 mr-2" />
           返回项目列表
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
+        <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
       </div>
 
       {/* 项目信息卡片 */}
@@ -363,7 +363,6 @@ export default function ProjectDetailPage() {
               variant="outline"
               size="sm"
               onClick={() => setShowEditProjectDialog(true)}
-              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
             >
               <Edit className="h-4 w-4" />
               编辑
@@ -372,7 +371,6 @@ export default function ProjectDetailPage() {
               variant="outline"
               size="sm"
               onClick={handleToggleProjectStatus}
-              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
             >
               {project.status ? (
                 <>
@@ -390,7 +388,7 @@ export default function ProjectDetailPage() {
               variant="outline"
               size="sm"
               onClick={() => setShowDeleteProjectDialog(true)}
-              className="text-red-600 border-red-200 hover:bg-red-50"
+              className="text-destructive hover:text-destructive/80"
             >
               <Trash2 className="h-4 w-4" />
               删除
@@ -400,28 +398,28 @@ export default function ProjectDetailPage() {
         <CardContent className="pt-0">
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <dt className="text-sm font-medium text-gray-500">项目ID</dt>
-              <dd className="mt-1 text-sm text-gray-900 font-mono">{project.id}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">项目ID</dt>
+              <dd className="mt-1 text-sm text-foreground font-mono">{project.id}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">创建时间</dt>
-              <dd className="mt-1 text-sm text-gray-900">{timestampToLocal(project.created_at)}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">创建时间</dt>
+              <dd className="mt-1 text-sm text-foreground">{timestampToLocal(project.created_at)}</dd>
             </div>
             <div className="md:col-span-2">
-              <dt className="text-sm font-medium text-gray-500">项目描述</dt>
-              <dd className="mt-1 text-sm text-gray-900">{project.description || '-'}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">项目描述</dt>
+              <dd className="mt-1 text-sm text-foreground">{project.description || '-'}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">有效期</dt>
-              <dd className={`mt-1 text-sm ${project.is_expired ? 'text-red-600' : 'text-gray-900'}`}>
+              <dt className="text-sm font-medium text-muted-foreground">有效期</dt>
+              <dd className={`mt-1 text-sm ${project.is_expired ? 'text-destructive' : 'text-foreground'}`}>
                 {project.expires_at ? timestampToLocal(project.expires_at) : '永久有效'}
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">状态</dt>
+              <dt className="text-sm font-medium text-muted-foreground">状态</dt>
               <dd className="mt-1">
                 {project.status ? (
-                  <Badge className="bg-green-100 text-green-800 border-transparent">启用</Badge>
+                  <Badge variant="default">启用</Badge>
                 ) : (
                   <Badge variant="secondary">禁用</Badge>
                 )}
@@ -435,34 +433,34 @@ export default function ProjectDetailPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">总激活码</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">总激活码</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{formatNumber(project.code_count || 0)}</div>
+            <div className="text-2xl font-bold text-foreground">{formatNumber(project.code_count || 0)}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">已核销</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">已核销</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{formatNumber(project.verified_count || 0)}</div>
+            <div className="text-2xl font-bold text-foreground">{formatNumber(project.verified_count || 0)}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">未核销</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">未核销</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{formatNumber(project.unverified_count || 0)}</div>
+            <div className="text-2xl font-bold text-foreground">{formatNumber(project.unverified_count || 0)}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">已过期</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">已过期</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{formatNumber(project.expired_count || 0)}</div>
+            <div className="text-2xl font-bold text-foreground">{formatNumber(project.expired_count || 0)}</div>
           </CardContent>
         </Card>
       </div>
@@ -474,7 +472,6 @@ export default function ProjectDetailPage() {
           <div className="flex items-center gap-2">
             <Button
               onClick={() => setShowGenerateDialog(true)}
-              className="bg-indigo-600 hover:bg-indigo-700"
             >
               <Plus className="h-4 w-4" />
               批量生成
@@ -482,7 +479,6 @@ export default function ProjectDetailPage() {
             <Button
               onClick={() => setShowBatchDisableDialog(true)}
               variant="outline"
-              className="text-yellow-600 border-yellow-200 hover:bg-yellow-50"
             >
               <Ban className="h-4 w-4" />
               批量禁用未使用
@@ -494,7 +490,7 @@ export default function ProjectDetailPage() {
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="flex-1">
               <div className="relative">
-                <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
+                <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-3" />
                 <Input
                   value={search}
                   onChange={(e) => {
@@ -541,13 +537,13 @@ export default function ProjectDetailPage() {
               <TableBody>
                 {codesLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       加载中...
                     </TableCell>
                   </TableRow>
                 ) : codes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       暂无激活码
                     </TableCell>
                   </TableRow>
@@ -558,7 +554,7 @@ export default function ProjectDetailPage() {
                       <TableCell className="font-mono">
                         <button
                           type="button"
-                          className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700"
+                          className="inline-flex items-center gap-2 text-primary hover:text-primary/80"
                           onClick={async () => {
                             try {
                               await navigator.clipboard.writeText(code.code);
@@ -574,11 +570,11 @@ export default function ProjectDetailPage() {
                         </button>
                       </TableCell>
                       <TableCell>{getCodeStatusBadge(code)}</TableCell>
-                      <TableCell className="text-gray-700">
+                      <TableCell className="text-foreground">
                         {code.verified_at ? timestampToLocal(code.verified_at) : '-'}
                       </TableCell>
-                      <TableCell className="text-gray-700">{code.verified_by || '-'}</TableCell>
-                      <TableCell className="text-gray-700">{timestampToLocal(code.created_at)}</TableCell>
+                      <TableCell className="text-foreground">{code.verified_by || '-'}</TableCell>
+                      <TableCell className="text-foreground">{timestampToLocal(code.created_at)}</TableCell>
                       <TableCell className="text-right">
                         <div className="inline-flex items-center justify-end gap-2">
                           {/* 禁用按钮：仅对"未使用且未禁用且未过期"的激活码显示 */}
@@ -587,7 +583,6 @@ export default function ProjectDetailPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleToggleCodeStatus(code.id, code.is_disabled)}
-                              className="text-indigo-600 hover:text-indigo-700"
                               title="禁用"
                             >
                               <PowerOff className="h-4 w-4" />
@@ -600,7 +595,6 @@ export default function ProjectDetailPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleToggleCodeStatus(code.id, code.is_disabled)}
-                              className="text-indigo-600 hover:text-indigo-700"
                               title="启用"
                             >
                               <Power className="h-4 w-4" />
@@ -615,7 +609,6 @@ export default function ProjectDetailPage() {
                                 setSelectedCodeId(code.id);
                                 setShowReactivateDialog(true);
                               }}
-                              className="text-green-600 hover:text-green-700"
                               title="重新激活"
                             >
                               <RotateCcw className="h-4 w-4" />
@@ -629,7 +622,7 @@ export default function ProjectDetailPage() {
                               setSelectedCodeId(code.id);
                               setShowDeleteCodeDialog(true);
                             }}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-destructive hover:text-destructive/80"
                           >
                             <Trash2 className="h-4 w-4" />
                             删除
@@ -645,10 +638,10 @@ export default function ProjectDetailPage() {
 
           {/* 分页组件 */}
           <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">共 {total} 个激活码</div>
+            <div className="text-sm text-foreground">共 {total} 个激活码</div>
             {totalPages > 1 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700 mr-2">
+                <span className="text-sm text-foreground mr-2">
                   第 {page} 页，共 {totalPages} 页
                 </span>
                 <Button variant="outline" size="sm" onClick={() => setPage(page - 1)} disabled={page === 1}>
@@ -665,7 +658,6 @@ export default function ProjectDetailPage() {
                       variant={isCurrent ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setPage(pageNum)}
-                      className={isCurrent ? 'bg-indigo-600 hover:bg-indigo-700' : undefined}
                     >
                       {pageNum}
                     </Button>
@@ -689,20 +681,20 @@ export default function ProjectDetailPage() {
           <form onSubmit={handleGenerate} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="gen_count">
-                生成数量 <span className="text-red-500">*</span>
+                生成数量 <span className="text-destructive">*</span>
               </Label>
               <Input id="gen_count" type="number" name="count" required min="1" max="10000" defaultValue="10" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="gen_expires_at">过期时间（可选）</Label>
               <Input id="gen_expires_at" type="datetime-local" name="expires_at" />
-              <p className="text-sm text-gray-500">为空则使用项目有效期（如有）。</p>
+              <p className="text-sm text-muted-foreground">为空则使用项目有效期（如有）。</p>
             </div>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setShowGenerateDialog(false)}>
                 取消
               </Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+              <Button type="submit">
                 生成
               </Button>
             </DialogFooter>
@@ -729,7 +721,6 @@ export default function ProjectDetailPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-yellow-600 hover:bg-yellow-700"
               onClick={handleBatchDisableUnused}
             >
               确认禁用
@@ -756,7 +747,6 @@ export default function ProjectDetailPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-indigo-600 hover:bg-indigo-700"
               onClick={() => {
                 if (!selectedCodeId) return;
                 handleReactivate(selectedCodeId);
@@ -785,7 +775,7 @@ export default function ProjectDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDeleteCode}>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteCode}>
               确认删除
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -803,7 +793,7 @@ export default function ProjectDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDeleteProject}>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteProject}>
               确认删除
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -819,7 +809,7 @@ export default function ProjectDetailPage() {
           <form onSubmit={handleEditProject} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="proj_name">
-                项目名称 <span className="text-red-500">*</span>
+                项目名称 <span className="text-destructive">*</span>
               </Label>
               <Input id="proj_name" name="name" required maxLength={100} defaultValue={project.name} />
             </div>
@@ -837,7 +827,7 @@ export default function ProjectDetailPage() {
                 type="checkbox"
                 name="status"
                 defaultChecked={project.status}
-                className="h-4 w-4 rounded border-input text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-4 w-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <Label htmlFor="proj_status">启用项目</Label>
             </div>
@@ -845,7 +835,7 @@ export default function ProjectDetailPage() {
               <Button type="button" variant="secondary" onClick={() => setShowEditProjectDialog(false)}>
                 取消
               </Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+              <Button type="submit">
                 保存
               </Button>
             </DialogFooter>

@@ -188,7 +188,7 @@ export default function ProjectsPage() {
     <MainLayout>
       {/* 页面标题 */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">项目管理</h1>
+        <h1 className="text-3xl font-bold text-foreground">项目管理</h1>
       </div>
 
       {/* 搜索和筛选栏 */}
@@ -219,14 +219,13 @@ export default function ProjectsPage() {
                 <option value="false">禁用</option>
               </select>
             </div>
-            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+            <Button type="submit">
               <Search className="h-4 w-4" />
               搜索
             </Button>
             <Button
               type="button"
               onClick={() => setShowCreateModal(true)}
-              className="bg-indigo-600 hover:bg-indigo-700"
             >
               <Plus className="h-4 w-4" />
               创建项目
@@ -257,13 +256,13 @@ export default function ProjectsPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       加载中...
                     </TableCell>
                   </TableRow>
                 ) : projects.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       暂无项目
                     </TableCell>
                   </TableRow>
@@ -274,22 +273,22 @@ export default function ProjectsPage() {
                         {shortUuid(project.id)}
                       </TableCell>
                       <TableCell className="font-medium">
-                        <Link href={`/projects/${project.id}`} className="text-indigo-600 hover:text-indigo-700">
+                        <Link href={`/projects/${project.id}`} className="text-primary hover:text-primary/80">
                           {project.name}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-gray-700">
+                      <TableCell className="text-foreground">
                         {truncateText(project.description, 50)}
                       </TableCell>
-                      <TableCell className="text-gray-700">
+                      <TableCell className="text-foreground">
                         {timestampToLocal(project.created_at)}
                       </TableCell>
-                      <TableCell className={project.is_expired ? 'text-red-600' : 'text-gray-700'}>
+                      <TableCell className={project.is_expired ? 'text-destructive' : 'text-foreground'}>
                         {project.expires_at ? timestampToLocal(project.expires_at) : '永久有效'}
                       </TableCell>
                       <TableCell>
                         {project.status ? (
-                          <Badge className="bg-green-100 text-green-800 border-transparent">
+                          <Badge variant="default">
                             启用
                           </Badge>
                         ) : (
@@ -302,7 +301,6 @@ export default function ProjectsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openEditModal(project.id)}
-                            className="text-indigo-600 hover:text-indigo-700"
                           >
                             <Edit className="h-4 w-4" />
                             编辑
@@ -311,7 +309,6 @@ export default function ProjectsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleToggleStatus(project.id, project.status)}
-                            className="text-indigo-600 hover:text-indigo-700"
                           >
                             {project.status ? (
                               <>
@@ -332,7 +329,7 @@ export default function ProjectsPage() {
                               setDeletingProjectId(project.id);
                               setShowDeleteModal(true);
                             }}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-destructive hover:text-destructive/80"
                           >
                             <Trash2 className="h-4 w-4" />
                             删除
@@ -348,10 +345,10 @@ export default function ProjectsPage() {
 
           {/* 分页组件 */}
           <div className="mt-4 flex items-center justify-between">
-            <div className="text-sm text-gray-700">共 {total} 个项目</div>
+            <div className="text-sm text-foreground">共 {total} 个项目</div>
             {totalPages > 1 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700 mr-2">
+                <span className="text-sm text-foreground mr-2">
                   第 {page} 页，共 {totalPages} 页
                 </span>
                 <Button
@@ -373,7 +370,6 @@ export default function ProjectsPage() {
                       variant={isCurrent ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setPage(pageNum)}
-                      className={isCurrent ? 'bg-indigo-600 hover:bg-indigo-700' : undefined}
                     >
                       {pageNum}
                     </Button>
@@ -402,7 +398,7 @@ export default function ProjectsPage() {
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="create_name">
-                项目名称 <span className="text-red-500">*</span>
+                项目名称 <span className="text-destructive">*</span>
               </Label>
               <Input id="create_name" type="text" name="name" required maxLength={100} />
             </div>
@@ -418,7 +414,7 @@ export default function ProjectsPage() {
               <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>
                 取消
               </Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+              <Button type="submit">
                 创建
               </Button>
             </DialogFooter>
@@ -442,7 +438,7 @@ export default function ProjectsPage() {
             <form onSubmit={handleEdit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="edit_name">
-                  项目名称 <span className="text-red-500">*</span>
+                  项目名称 <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="edit_name"
@@ -478,7 +474,7 @@ export default function ProjectsPage() {
                   type="checkbox"
                   name="status"
                   defaultChecked={editingProject.status}
-                  className="h-4 w-4 rounded border-input text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="h-4 w-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <Label htmlFor="edit_status">启用项目</Label>
               </div>
@@ -493,7 +489,7 @@ export default function ProjectsPage() {
                 >
                   取消
                 </Button>
-                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+                <Button type="submit">
                   保存
                 </Button>
               </DialogFooter>
@@ -520,7 +516,7 @@ export default function ProjectsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
               onClick={handleDelete}
             >
               确认删除

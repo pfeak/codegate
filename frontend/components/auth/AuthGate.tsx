@@ -127,8 +127,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-sm text-gray-500">加载中...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-sm text-muted-foreground">加载中...</div>
       </div>
     );
   }

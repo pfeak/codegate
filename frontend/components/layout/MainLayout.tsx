@@ -26,19 +26,19 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-background">
       <Sidebar />
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* 主内容区域 */}
-        <div className="flex-1 overflow-y-auto bg-gray-50">
+        <div className="flex-1 overflow-y-auto bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {children}
           </div>
         </div>
 
         {/* 页脚 */}
-        <footer className="bg-white border-t border-gray-200 px-4 sm:px-6 lg:px-8 py-4">
-          <p className="text-center text-gray-500 text-sm">
+        <footer className="bg-card border-t border-border px-4 sm:px-6 lg:px-8 py-4">
+          <p className="text-center text-muted-foreground text-sm">
             © 2026 CodeGate. Licensed under Apache License 2.0.
           </p>
         </footer>

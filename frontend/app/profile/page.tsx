@@ -105,7 +105,7 @@ export default function ProfilePage() {
   return (
     <MainLayout>
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">个人管理</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-6">个人管理</h1>
 
         {/* 个人信息卡片 */}
         <Card className="mb-6">
@@ -114,24 +114,24 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="pt-0">
             {infoLoading ? (
-              <div className="text-gray-500">加载中...</div>
+              <div className="text-muted-foreground">加载中...</div>
             ) : adminInfo ? (
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <dt className="text-sm text-gray-500">用户名</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{adminInfo.username}</dd>
+                  <dt className="text-sm text-muted-foreground">用户名</dt>
+                  <dd className="mt-1 text-sm text-foreground">{adminInfo.username}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-gray-500">创建时间</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{timestampToLocal(adminInfo.created_at)}</dd>
+                  <dt className="text-sm text-muted-foreground">创建时间</dt>
+                  <dd className="mt-1 text-sm text-foreground">{timestampToLocal(adminInfo.created_at)}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-gray-500">最后登录</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{timestampToLocal(adminInfo.last_login_at)}</dd>
+                  <dt className="text-sm text-muted-foreground">最后登录</dt>
+                  <dd className="mt-1 text-sm text-foreground">{timestampToLocal(adminInfo.last_login_at)}</dd>
                 </div>
               </dl>
             ) : (
-              <div className="text-gray-500">加载失败</div>
+              <div className="text-muted-foreground">加载失败</div>
             )}
           </CardContent>
         </Card>
@@ -145,7 +145,7 @@ export default function ProfilePage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="old_password">
-                  当前密码 <span className="text-red-500">*</span>
+                  当前密码 <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   type="password"
@@ -160,7 +160,7 @@ export default function ProfilePage() {
 
               <div className="space-y-2">
                 <Label htmlFor="new_password">
-                  新密码 <span className="text-red-500">*</span>
+                  新密码 <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   type="password"
@@ -171,12 +171,12 @@ export default function ProfilePage() {
                   placeholder="至少8位，包含字母和数字"
                   autoComplete="new-password"
                 />
-                <p className="text-sm text-gray-500">至少8位，包含字母和数字</p>
+                <p className="text-sm text-muted-foreground">至少8位，包含字母和数字</p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="confirm_password">
-                  确认新密码 <span className="text-red-500">*</span>
+                  确认新密码 <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   type="password"
@@ -192,7 +192,6 @@ export default function ProfilePage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="bg-indigo-600 hover:bg-indigo-700"
               >
                 {loading ? (
                   <>

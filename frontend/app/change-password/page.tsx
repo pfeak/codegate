@@ -95,18 +95,18 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="bg-gray-50 flex items-center justify-center min-h-screen">
+    <div className="bg-background flex items-center justify-center min-h-screen">
       <div className="max-w-md w-full mx-4">
         <Card className="shadow-lg">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">首次登录 - 请修改密码</CardTitle>
-            <p className="text-gray-500 text-sm">为了您的账户安全，请修改初始密码</p>
+            <p className="text-muted-foreground text-sm">为了您的账户安全，请修改初始密码</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="old_password">
-                  当前密码 <span className="text-red-500">*</span>
+                  当前密码 <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   type="password"
@@ -121,7 +121,7 @@ export default function ChangePasswordPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="new_password">
-                  新密码 <span className="text-red-500">*</span>
+                  新密码 <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   type="password"
@@ -132,12 +132,12 @@ export default function ChangePasswordPage() {
                   placeholder="至少8位，包含字母和数字"
                   autoComplete="new-password"
                 />
-                <p className="text-sm text-gray-500">至少8位，包含字母和数字</p>
+                <p className="text-sm text-muted-foreground">至少8位，包含字母和数字</p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="confirm_password">
-                  确认新密码 <span className="text-red-500">*</span>
+                  确认新密码 <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   type="password"
@@ -153,7 +153,7 @@ export default function ChangePasswordPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700"
+                className="w-full"
               >
                 {loading ? (
                   <>

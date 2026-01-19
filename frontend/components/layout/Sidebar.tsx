@@ -72,7 +72,7 @@ export default function Sidebar() {
       {/* 移动端遮罩层 */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-gray-600 bg-opacity-50 z-30 lg:hidden"
+          className="fixed inset-0 bg-background/80 z-30 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -80,15 +80,15 @@ export default function Sidebar() {
       {/* 侧边栏 */}
       <aside
         className={[
-          'fixed lg:sticky top-0 left-0 w-64 h-screen bg-white border-r border-gray-200 flex flex-col z-40',
+          'fixed lg:sticky top-0 left-0 w-64 h-screen bg-card border-r border-border flex flex-col z-40',
           'transition-transform duration-200',
           // 移动端抽屉效果
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         ].join(' ')}
       >
         {/* Logo/标题区域 */}
-        <div className="h-16 px-4 py-4 flex items-center border-b border-gray-200">
-          <Link href="/" className="text-xl font-bold text-indigo-600">
+        <div className="h-16 px-4 py-4 flex items-center border-b border-border">
+          <Link href="/" className="text-xl font-bold text-primary">
             CodeGate
           </Link>
         </div>
@@ -98,8 +98,8 @@ export default function Sidebar() {
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = item.external ? false : isActive(item.path);
-            const className = `flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors ${active
-              ? 'bg-indigo-50 text-indigo-600 border-r-2 border-indigo-600'
+            const className = `flex items-center px-4 py-3 text-foreground hover:bg-accent hover:text-accent-foreground transition-colors ${active
+              ? 'bg-accent text-primary border-r-2 border-primary'
               : ''
               }`;
 
@@ -133,12 +133,12 @@ export default function Sidebar() {
         </nav>
 
         {/* 底部用户信息 */}
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-border p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-700">{username}</span>
+            <span className="text-sm text-foreground">{username}</span>
             <Link
               href="/profile"
-              className="text-sm text-indigo-600 hover:text-indigo-700"
+              className="text-sm text-primary hover:text-primary/80"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               <User className="h-5 w-5" />
@@ -153,7 +153,7 @@ export default function Sidebar() {
                 console.error('登出失败:', error);
               }
             }}
-            className="w-full text-left text-sm text-gray-600 hover:text-gray-900 flex items-center gap-2"
+            className="w-full text-left text-sm text-muted-foreground hover:text-foreground flex items-center gap-2"
           >
             <LogOut className="h-4 w-4" />
             <span>登出</span>
@@ -162,13 +162,13 @@ export default function Sidebar() {
       </aside>
 
       {/* 移动端顶部导航栏 */}
-      <div className="lg:hidden bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold text-indigo-600">
+      <div className="lg:hidden bg-card shadow-sm border-b border-border px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="text-xl font-bold text-primary">
           CodeGate
         </Link>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="text-gray-500 hover:text-gray-700 focus:outline-none"
+          className="text-muted-foreground hover:text-foreground focus:outline-none"
           aria-label={isMobileMenuOpen ? '关闭菜单' : '打开菜单'}
         >
           {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}

@@ -58,18 +58,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-gray-50 flex items-center justify-center min-h-screen">
+    <div className="bg-background flex items-center justify-center min-h-screen">
       <div className="max-w-md w-full mx-4">
         <Card className="shadow-lg">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">CodeGate 管理员登录</CardTitle>
-            <p className="text-gray-500 text-sm">请输入您的用户名和密码</p>
+            <p className="text-muted-foreground text-sm">请输入您的用户名和密码</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">
-                  用户名 <span className="text-red-500">*</span>
+                  用户名 <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   type="text"
@@ -84,7 +84,7 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password">
-                  密码 <span className="text-red-500">*</span>
+                  密码 <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   type="password"
@@ -100,7 +100,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700"
+                className="w-full"
               >
                 {loading ? (
                   <>
@@ -116,7 +116,7 @@ export default function LoginPage() {
         </Card>
 
         {/* 默认账户提示 */}
-        <div className="mt-4 text-center text-sm text-gray-500">
+        <div className="mt-4 text-center text-sm text-muted-foreground">
           <p>默认管理员账户：admin / 123456</p>
         </div>
       </div>

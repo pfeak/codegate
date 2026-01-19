@@ -68,8 +68,8 @@ export default function HomePage() {
     <MainLayout>
       {/* 页面标题 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">项目概览</h1>
-        <p className="mt-2 text-gray-500">查看系统整体状态和统计数据</p>
+        <h1 className="text-3xl font-bold text-foreground">项目概览</h1>
+        <p className="mt-2 text-muted-foreground">查看系统整体状态和统计数据</p>
       </div>
 
       {/* 统计卡片 */}
@@ -77,10 +77,10 @@ export default function HomePage() {
         <Link href="/projects" className="block">
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">项目总数</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">项目总数</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-2xl font-bold text-foreground">
                 {loading ? '-' : formatNumber(stats.project_count)}
               </div>
             </CardContent>
@@ -88,30 +88,30 @@ export default function HomePage() {
         </Link>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">激活码总数</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">激活码总数</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-foreground">
               {loading ? '-' : formatNumber(stats.code_count)}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">已使用数量</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">已使用数量</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-foreground">
               {loading ? '-' : formatNumber(stats.verified_count)}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">未使用数量</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">未使用数量</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-foreground">
               {loading ? '-' : formatNumber(stats.unverified_count)}
             </div>
           </CardContent>
@@ -137,13 +137,13 @@ export default function HomePage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-gray-500">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
                       加载中...
                     </TableCell>
                   </TableRow>
                 ) : recentVerifications.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-gray-500">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
                       暂无记录
                     </TableCell>
                   </TableRow>
@@ -159,9 +159,9 @@ export default function HomePage() {
                       }}
                     >
                       <TableCell className="font-mono">{log.code}</TableCell>
-                      <TableCell className="text-gray-700">{log.project_name || '-'}</TableCell>
-                      <TableCell className="text-gray-700">{timestampToLocal(log.verified_at)}</TableCell>
-                      <TableCell className="text-gray-700">{log.verified_by || '-'}</TableCell>
+                      <TableCell className="text-foreground">{log.project_name || '-'}</TableCell>
+                      <TableCell className="text-foreground">{timestampToLocal(log.verified_at)}</TableCell>
+                      <TableCell className="text-foreground">{log.verified_by || '-'}</TableCell>
                     </TableRow>
                   ))
                 )}
