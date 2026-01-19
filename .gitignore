@@ -212,3 +212,4 @@ __marimo__/
 *.db-wal
 codegate.lock
 docs/design/
+.pnpm-store/

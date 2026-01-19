@@ -22,7 +22,7 @@ import logging
 
 from .config import settings
 from .database import init_db
-from .api import projects, codes, verify, auth, dashboard
+from .api import projects, codes, verify, auth, dashboard, verification_logs
 
 # 配置日志
 logging.basicConfig(
@@ -57,6 +57,7 @@ app.include_router(projects.router)
 app.include_router(codes.router)
 app.include_router(codes.router_standalone)  # 独立的激活码API路由
 app.include_router(verify.router)
+app.include_router(verification_logs.router)
 
 
 @app.on_event("startup")

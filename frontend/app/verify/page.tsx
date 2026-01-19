@@ -20,10 +20,22 @@
 
 import { useState, FormEvent, useRef, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
-import { verifyApi } from '@/lib/api';
+import { verifyApi, verificationLogsApi } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { timestampToLocal } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export default function VerifyPage() {
   const toast = useToast();
@@ -38,10 +50,39 @@ export default function VerifyPage() {
   } | null>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
 
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsTotal, setLogsTotal] = useState(0);
+  const [logsPage, setLogsPage] = useState(1);
+  const [logsLoading, setLogsLoading] = useState(true);
+  const logsPageSize = 20;
+
   useEffect(() => {
     // 页面加载时聚焦到输入框
     codeInputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    loadLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logsPage]);
+
+  const loadLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const data = await verificationLogsApi.list({
+        page: logsPage,
+        page_size: logsPageSize,
+      });
+      setLogs(data.items || []);
+      setLogsTotal(data.total || 0);
+    } catch (e: any) {
+      // 后端不可用时不要阻断主流程
+      setLogs([]);
+      setLogsTotal(0);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -50,10 +91,10 @@ export default function VerifyPage() {
 
     try {
       const data = await verifyApi.verify(
-        code.trim(),
+        code.replace(/\s+/g, '').trim(),
         verifiedBy.trim() || null
       );
-      
+
       setResult({
         success: data.success,
         message: data.message,
@@ -66,6 +107,9 @@ export default function VerifyPage() {
         // 清空输入框
         setCode('');
         setVerifiedBy('');
+        // 刷新历史记录
+        setLogsPage(1);
+        loadLogs();
         // 重新聚焦到输入框
         setTimeout(() => {
           codeInputRef.current?.focus();
@@ -92,138 +136,196 @@ export default function VerifyPage() {
     codeInputRef.current?.focus();
   };
 
+  const logsTotalPages = Math.ceil(logsTotal / logsPageSize);
+
   return (
     <MainLayout>
       {/* 页面标题 */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">核销验证</h1>
-        <p className="mt-2 text-gray-600">输入激活码进行核销验证</p>
+        <p className="mt-2 text-gray-500">输入激活码进行核销验证</p>
       </div>
 
       {/* 核销表单 */}
-      <div className="bg-white shadow-sm rounded-lg overflow-hidden mb-6">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">验证激活码</h2>
-        </div>
-        <div className="px-6 py-6">
+      <Card className="mb-6">
+        <CardHeader className="py-4">
+          <CardTitle className="text-xl">验证激活码</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* 激活码输入 */}
-            <div>
-              <label
-                htmlFor="code"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+            <div className="space-y-2">
+              <Label htmlFor="code">
                 激活码 <span className="text-red-500">*</span>
-              </label>
-              <input
+              </Label>
+              <Input
                 ref={codeInputRef}
                 type="text"
                 id="code"
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e) => {
+                  // 自动去除空格与换行（PRD 要求）
+                  setCode(e.target.value.replace(/\s+/g, ''));
+                }}
+                onPaste={(e) => {
+                  const text = e.clipboardData.getData('text');
+                  if (text) {
+                    e.preventDefault();
+                    setCode(text.replace(/\s+/g, ''));
+                  }
+                }}
                 required
                 disabled={loading}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed font-mono"
-                placeholder="请输入激活码"
+                className="font-mono"
+                placeholder="请输入激活码（支持粘贴）"
                 autoComplete="off"
               />
             </div>
 
-            {/* 核销用户（可选） */}
-            <div>
-              <label
-                htmlFor="verifiedBy"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                核销用户（可选）
-              </label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="verifiedBy">核销用户（可选）</Label>
+              <Input
                 type="text"
                 id="verifiedBy"
                 value={verifiedBy}
                 onChange={(e) => setVerifiedBy(e.target.value)}
                 disabled={loading}
                 maxLength={100}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="请输入核销用户（可选）"
                 autoComplete="off"
               />
             </div>
 
-            {/* 操作按钮 */}
-            <div className="flex items-center space-x-3 pt-4">
-              <button
+            <div className="flex items-center gap-2 pt-2">
+              <Button
                 type="submit"
                 disabled={loading || !code.trim()}
-                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="bg-indigo-600 hover:bg-indigo-700"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     验证中...
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <CheckCircle className="h-4 w-4" />
                     验证
                   </>
                 )}
-              </button>
-              <button
-                type="button"
-                onClick={handleReset}
-                disabled={loading}
-                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              </Button>
+              <Button type="button" variant="secondary" onClick={handleReset} disabled={loading}>
                 重置
-              </button>
+              </Button>
             </div>
           </form>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* 验证结果 */}
       {result && (
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">验证结果</h2>
-          </div>
-          <div className="px-6 py-6">
+        <Card className="mb-6">
+          <CardHeader className="py-4">
+            <CardTitle className="text-xl">验证结果</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
             <div
-              className={`flex items-start space-x-3 p-4 rounded-lg ${
-                result.success
+              className={`flex items-start gap-3 p-4 rounded-lg ${result.success
                   ? 'bg-green-50 border border-green-200'
                   : 'bg-red-50 border border-red-200'
-              }`}
+                }`}
             >
               {result.success ? (
-                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
               ) : (
-                <XCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <XCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
               )}
               <div className="flex-1">
-                <p
-                  className={`font-medium ${
-                    result.success ? 'text-green-800' : 'text-red-800'
-                  }`}
-                >
+                <p className={`font-medium ${result.success ? 'text-green-800' : 'text-red-800'}`}>
                   {result.message}
                 </p>
                 {result.success && result.project_name && (
-                  <p className="mt-2 text-sm text-green-700">
-                    项目名称：{result.project_name}
-                  </p>
+                  <p className="mt-2 text-sm text-green-700">项目名称：{result.project_name}</p>
                 )}
                 {result.success && result.verified_at && (
-                  <p className="mt-1 text-sm text-green-700">
-                    核销时间：{timestampToLocal(result.verified_at)}
-                  </p>
+                  <p className="mt-1 text-sm text-green-700">核销时间：{timestampToLocal(result.verified_at)}</p>
                 )}
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
+
+      {/* 历史核销记录 */}
+      <Card>
+        <CardHeader className="py-4">
+          <CardTitle className="text-xl">历史核销记录</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-4">
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[220px]">激活码</TableHead>
+                  <TableHead className="w-[240px]">项目</TableHead>
+                  <TableHead className="w-[180px]">核销时间</TableHead>
+                  <TableHead className="w-[180px]">核销用户</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {logsLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-gray-500">
+                      加载中...
+                    </TableCell>
+                  </TableRow>
+                ) : logs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-gray-500">
+                      暂无记录
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  logs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-mono">{log.code}</TableCell>
+                      <TableCell className="text-gray-700">{log.project_name || '-'}</TableCell>
+                      <TableCell className="text-gray-700">{timestampToLocal(log.verified_at)}</TableCell>
+                      <TableCell className="text-gray-700">{log.verified_by || '-'}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {logsTotalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">共 {logsTotal} 条记录</div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700 mr-2">
+                  第 {logsPage} 页，共 {logsTotalPages} 页
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLogsPage((p) => Math.max(1, p - 1))}
+                  disabled={logsPage === 1}
+                >
+                  上一页
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLogsPage((p) => Math.min(logsTotalPages, p + 1))}
+                  disabled={logsPage === logsTotalPages}
+                >
+                  下一页
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </MainLayout>
   );
 }

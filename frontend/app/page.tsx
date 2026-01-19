@@ -23,6 +23,15 @@ import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import { dashboardApi } from '@/lib/api';
 import { timestampToLocal, formatNumber } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export default function HomePage() {
   const [stats, setStats] = useState({
@@ -67,98 +76,107 @@ export default function HomePage() {
       {/* 页面标题 */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">项目概览</h1>
-        <p className="mt-2 text-gray-600">查看系统整体状态和统计数据</p>
+        <p className="mt-2 text-gray-500">查看系统整体状态和统计数据</p>
       </div>
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Link
-          href="/projects"
-          className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow cursor-pointer"
-        >
-          <div className="text-sm font-medium text-gray-500">项目总数</div>
-          <div className="mt-2 text-2xl font-bold text-gray-900">
-            {loading ? '-' : formatNumber(stats.project_count)}
-          </div>
+        <Link href="/projects" className="block">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">项目总数</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gray-900">
+                {loading ? '-' : formatNumber(stats.project_count)}
+              </div>
+            </CardContent>
+          </Card>
         </Link>
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="text-sm font-medium text-gray-500">激活码总数</div>
-          <div className="mt-2 text-2xl font-bold text-gray-900">
-            {loading ? '-' : formatNumber(stats.code_count)}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="text-sm font-medium text-gray-500">已使用数量</div>
-          <div className="mt-2 text-2xl font-bold text-gray-900">
-            {loading ? '-' : formatNumber(stats.verified_count)}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="text-sm font-medium text-gray-500">未使用数量</div>
-          <div className="mt-2 text-2xl font-bold text-gray-900">
-            {loading ? '-' : formatNumber(stats.unverified_count)}
-          </div>
-        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">激活码总数</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-900">
+              {loading ? '-' : formatNumber(stats.code_count)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">已使用数量</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-900">
+              {loading ? '-' : formatNumber(stats.verified_count)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">未使用数量</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-900">
+              {loading ? '-' : formatNumber(stats.unverified_count)}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 最近核销记录 */}
-      <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">最近核销记录</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  激活码
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  项目
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  核销时间
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  核销用户
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                    加载中...
-                  </td>
-                </tr>
-              ) : recentVerifications.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                    暂无记录
-                  </td>
-                </tr>
-              ) : (
-                recentVerifications.map((log, index) => (
-                  <tr key={index} className="hover:bg-gray-50 cursor-pointer">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                      {log.code}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {log.project_name || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {timestampToLocal(log.verified_at)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {log.verified_by || '-'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Card>
+        <CardHeader className="py-4">
+          <CardTitle className="text-xl">最近核销记录</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[220px]">激活码</TableHead>
+                  <TableHead className="w-[240px]">项目</TableHead>
+                  <TableHead className="w-[180px]">核销时间</TableHead>
+                  <TableHead className="w-[180px]">核销用户</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-gray-500">
+                      加载中...
+                    </TableCell>
+                  </TableRow>
+                ) : recentVerifications.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-gray-500">
+                      暂无记录
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  recentVerifications.map((log, index) => (
+                    <TableRow
+                      key={index}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        if (log.project_id) {
+                          window.location.href = `/projects/${log.project_id}`;
+                        }
+                      }}
+                    >
+                      <TableCell className="font-mono">{log.code}</TableCell>
+                      <TableCell className="text-gray-700">{log.project_name || '-'}</TableCell>
+                      <TableCell className="text-gray-700">{timestampToLocal(log.verified_at)}</TableCell>
+                      <TableCell className="text-gray-700">{log.verified_by || '-'}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </MainLayout>
   );
 }

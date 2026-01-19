@@ -20,9 +20,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Folder, CheckCircle, Book, User } from 'lucide-react';
+import { Home, Folder, CheckCircle, Book, User, Menu, X, LogOut } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { authApi } from '@/lib/api';
+import { authApi, API_BASE_URL } from '@/lib/api';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -79,8 +79,12 @@ export default function Sidebar() {
 
       {/* 侧边栏 */}
       <aside
-        className={`fixed lg:sticky top-0 w-64 h-screen bg-white border-r border-gray-200 flex flex-col z-40 ${isMobileMenuOpen ? '' : 'hidden lg:flex'
-          }`}
+        className={[
+          'fixed lg:sticky top-0 left-0 w-64 h-screen bg-white border-r border-gray-200 flex flex-col z-40',
+          'transition-transform duration-200',
+          // 移动端抽屉效果
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        ].join(' ')}
       >
         {/* Logo/标题区域 */}
         <div className="h-16 px-4 py-4 flex items-center border-b border-gray-200">
@@ -93,7 +97,7 @@ export default function Sidebar() {
         <nav className="flex-1 overflow-y-auto py-4">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = isActive(item.path);
+            const active = item.external ? false : isActive(item.path);
             const className = `flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors ${active
               ? 'bg-indigo-50 text-indigo-600 border-r-2 border-indigo-600'
               : ''
@@ -103,7 +107,7 @@ export default function Sidebar() {
               return (
                 <a
                   key={item.path}
-                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${item.path}`}
+                  href={`${API_BASE_URL}${item.path}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={className}
@@ -135,6 +139,7 @@ export default function Sidebar() {
             <Link
               href="/profile"
               className="text-sm text-indigo-600 hover:text-indigo-700"
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               <User className="h-5 w-5" />
             </Link>
@@ -148,9 +153,10 @@ export default function Sidebar() {
                 console.error('登出失败:', error);
               }
             }}
-            className="w-full text-left text-sm text-gray-600 hover:text-gray-900 flex items-center"
+            className="w-full text-left text-sm text-gray-600 hover:text-gray-900 flex items-center gap-2"
           >
-            <span className="mr-2">登出</span>
+            <LogOut className="h-4 w-4" />
+            <span>登出</span>
           </button>
         </div>
       </aside>
@@ -163,18 +169,9 @@ export default function Sidebar() {
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="text-gray-500 hover:text-gray-700 focus:outline-none"
+          aria-label={isMobileMenuOpen ? '关闭菜单' : '打开菜单'}
         >
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
     </>

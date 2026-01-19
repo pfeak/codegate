@@ -22,8 +22,15 @@ import { useState, useEffect, FormEvent } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { authApi } from '@/lib/api';
 import { timestampToLocal } from '@/lib/utils';
+import { useToast } from '@/components/ui/Toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 export default function ProfilePage() {
+  const toast = useToast();
   const [adminInfo, setAdminInfo] = useState<{
     username: string;
     created_at: number;
@@ -32,8 +39,6 @@ export default function ProfilePage() {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [infoLoading, setInfoLoading] = useState(true);
 
@@ -54,32 +59,30 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
 
     // 前端验证
     if (!oldPassword || !newPassword || !confirmPassword) {
-      setError('请填写所有字段');
+      toast.error('请填写所有字段');
       return;
     }
 
     if (newPassword.length < 8) {
-      setError('新密码长度至少8位');
+      toast.error('新密码长度至少8位');
       return;
     }
 
     if (!/[a-zA-Z]/.test(newPassword)) {
-      setError('新密码必须包含字母');
+      toast.error('新密码必须包含字母');
       return;
     }
 
     if (!/[0-9]/.test(newPassword)) {
-      setError('新密码必须包含数字');
+      toast.error('新密码必须包含数字');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('确认密码与新密码不一致');
+      toast.error('确认密码与新密码不一致');
       return;
     }
 
@@ -87,13 +90,13 @@ export default function ProfilePage() {
 
     try {
       await authApi.changePassword(oldPassword, newPassword, confirmPassword);
-      setSuccess('密码修改成功');
+      toast.success('密码修改成功');
       // 清空表单
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setError(err.message || '密码修改失败');
+      toast.error(err.message || '密码修改失败');
     } finally {
       setLoading(false);
     }
@@ -105,116 +108,104 @@ export default function ProfilePage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-6">个人管理</h1>
 
         {/* 个人信息卡片 */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">个人信息</h2>
-          {infoLoading ? (
-            <div className="text-gray-500">加载中...</div>
-          ) : adminInfo ? (
-            <div className="space-y-3">
-              <div className="flex items-center">
-                <span className="text-sm font-medium text-gray-700 w-24">用户名：</span>
-                <span className="text-sm text-gray-900">{adminInfo.username}</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-sm font-medium text-gray-700 w-24">创建时间：</span>
-                <span className="text-sm text-gray-900">
-                  {timestampToLocal(adminInfo.created_at)}
-                </span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-sm font-medium text-gray-700 w-24">最后登录：</span>
-                <span className="text-sm text-gray-900">
-                  {timestampToLocal(adminInfo.last_login_at)}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="text-gray-500">加载失败</div>
-          )}
-        </div>
+        <Card className="mb-6">
+          <CardHeader className="py-4">
+            <CardTitle className="text-lg">个人信息</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {infoLoading ? (
+              <div className="text-gray-500">加载中...</div>
+            ) : adminInfo ? (
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <dt className="text-sm text-gray-500">用户名</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{adminInfo.username}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500">创建时间</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{timestampToLocal(adminInfo.created_at)}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500">最后登录</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{timestampToLocal(adminInfo.last_login_at)}</dd>
+                </div>
+              </dl>
+            ) : (
+              <div className="text-gray-500">加载失败</div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* 修改密码卡片 */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">修改密码</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* 当前密码 */}
-            <div>
-              <label
-                htmlFor="old_password"
-                className="block text-sm font-medium text-gray-700 mb-2"
+        <Card>
+          <CardHeader className="py-4">
+            <CardTitle className="text-lg">修改密码</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="old_password">
+                  当前密码 <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="password"
+                  id="old_password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  required
+                  placeholder="请输入当前密码"
+                  autoComplete="current-password"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new_password">
+                  新密码 <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="password"
+                  id="new_password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  placeholder="至少8位，包含字母和数字"
+                  autoComplete="new-password"
+                />
+                <p className="text-sm text-gray-500">至少8位，包含字母和数字</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password">
+                  确认新密码 <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="password"
+                  id="confirm_password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  placeholder="请再次输入新密码"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-indigo-600 hover:bg-indigo-700"
               >
-                当前密码 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="password"
-                id="old_password"
-                value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="请输入当前密码"
-              />
-            </div>
-
-            {/* 新密码 */}
-            <div>
-              <label
-                htmlFor="new_password"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                新密码 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="password"
-                id="new_password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="至少8位，包含字母和数字"
-              />
-              <p className="mt-1 text-sm text-gray-500">至少8位，包含字母和数字</p>
-            </div>
-
-            {/* 确认新密码 */}
-            <div>
-              <label
-                htmlFor="confirm_password"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                确认新密码 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="password"
-                id="confirm_password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="请再次输入新密码"
-              />
-            </div>
-
-            {/* 错误提示 */}
-            {error && (
-              <div className="text-red-600 text-sm">{error}</div>
-            )}
-
-            {/* 成功提示 */}
-            {success && (
-              <div className="text-green-600 text-sm">{success}</div>
-            )}
-
-            {/* 修改密码按钮 */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? '修改中...' : '修改密码'}
-            </button>
-          </form>
-        </div>
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    修改中...
+                  </>
+                ) : (
+                  '修改密码'
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
   );

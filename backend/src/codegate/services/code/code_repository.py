@@ -213,3 +213,28 @@ class CodeRepository:
         count = query.update({"is_disabled": True}, synchronize_session=False)
         db.commit()
         return count
+
+    @staticmethod
+    def count_disable_unused(
+        db: Session,
+        project_id: str,
+        search: Optional[str] = None,
+    ) -> int:
+        """
+        统计当前筛选条件下可被“批量禁用”的激活码数量。
+
+        规则与 batch_disable_unused 一致：
+        - 未使用（status=False）
+        - 未禁用（is_disabled=False）
+        - 未过期（is_expired=False）
+        - 可选：按 code 模糊搜索
+        """
+        query = db.query(InvitationCode).filter(
+            InvitationCode.project_id == project_id,
+            InvitationCode.status == False,
+            InvitationCode.is_disabled == False,
+            InvitationCode.is_expired == False,
+        )
+        if search:
+            query = query.filter(InvitationCode.code.contains(search))
+        return query.count()

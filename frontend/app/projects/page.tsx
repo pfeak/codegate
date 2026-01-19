@@ -23,9 +23,39 @@ import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import { projectsApi } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
-import Modal, { ConfirmModal } from '@/components/ui/Modal';
-import { timestampToLocal, truncateText, dateTimeLocalToTimestamp } from '@/lib/utils';
+import { timestampToLocal, truncateText, dateTimeLocalToTimestamp, timestampToDateTimeLocalValue, shortUuid } from '@/lib/utils';
 import { Search, Plus, Edit, Trash2, Power, PowerOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export default function ProjectsPage() {
   const toast = useToast();
@@ -157,19 +187,22 @@ export default function ProjectsPage() {
   return (
     <MainLayout>
       {/* 页面标题 */}
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">项目管理</h1>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">项目管理</h1>
+      </div>
 
       {/* 搜索和筛选栏 */}
-      <div className="bg-white shadow-sm rounded-lg overflow-hidden mb-6">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
+      <Card className="mb-6">
+        <CardHeader className="py-4">
+          <CardTitle className="text-lg">搜索与筛选</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
-              <input
-                type="text"
+              <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="搜索项目名称..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <div className="sm:w-48">
@@ -179,344 +212,322 @@ export default function ProjectsPage() {
                   setStatus(e.target.value);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">全部状态</option>
                 <option value="true">启用</option>
                 <option value="false">禁用</option>
               </select>
             </div>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors flex items-center"
-            >
-              <Search className="h-4 w-4 mr-2" />
+            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+              <Search className="h-4 w-4" />
               搜索
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors flex items-center"
+              className="bg-indigo-600 hover:bg-indigo-700"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               创建项目
-            </button>
+            </Button>
           </form>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* 项目表格 */}
-      <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  名称
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  描述
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  创建时间
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  有效期
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  状态
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                    加载中...
-                  </td>
-                </tr>
-              ) : projects.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                    暂无项目
-                  </td>
-                </tr>
-              ) : (
-                projects.map((project) => (
-                  <tr key={project.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {project.id.substring(0, 8)}...
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      <Link
-                        href={`/projects/${project.id}`}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        {project.name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {truncateText(project.description, 50)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {timestampToLocal(project.created_at)}
-                    </td>
-                    <td
-                      className={`px-6 py-4 whitespace-nowrap text-sm ${project.is_expired ? 'text-red-600' : 'text-gray-500'
-                        }`}
-                    >
-                      {project.expires_at ? timestampToLocal(project.expires_at) : '永久有效'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {project.status ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                          启用
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
-                          禁用
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => openEditModal(project.id)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-3"
-                      >
-                        <Edit className="h-4 w-4 inline mr-1" />
-                        编辑
-                      </button>
-                      <button
-                        onClick={() => handleToggleStatus(project.id, project.status)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-3"
-                      >
+      <Card>
+        <CardHeader className="py-4">
+          <CardTitle className="text-lg">项目列表</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[140px]">ID</TableHead>
+                  <TableHead className="w-[220px]">名称</TableHead>
+                  <TableHead>描述</TableHead>
+                  <TableHead className="w-[160px]">创建时间</TableHead>
+                  <TableHead className="w-[160px]">有效期</TableHead>
+                  <TableHead className="w-[110px]">状态</TableHead>
+                  <TableHead className="w-[240px] text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-gray-500">
+                      加载中...
+                    </TableCell>
+                  </TableRow>
+                ) : projects.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-gray-500">
+                      暂无项目
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  projects.map((project) => (
+                    <TableRow key={project.id}>
+                      <TableCell className="font-mono text-sm">
+                        {shortUuid(project.id)}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <Link href={`/projects/${project.id}`} className="text-indigo-600 hover:text-indigo-700">
+                          {project.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-gray-700">
+                        {truncateText(project.description, 50)}
+                      </TableCell>
+                      <TableCell className="text-gray-700">
+                        {timestampToLocal(project.created_at)}
+                      </TableCell>
+                      <TableCell className={project.is_expired ? 'text-red-600' : 'text-gray-700'}>
+                        {project.expires_at ? timestampToLocal(project.expires_at) : '永久有效'}
+                      </TableCell>
+                      <TableCell>
                         {project.status ? (
-                          <>
-                            <PowerOff className="h-4 w-4 inline mr-1" />
-                            禁用
-                          </>
-                        ) : (
-                          <>
-                            <Power className="h-4 w-4 inline mr-1" />
+                          <Badge className="bg-green-100 text-green-800 border-transparent">
                             启用
-                          </>
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">禁用</Badge>
                         )}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDeletingProjectId(project.id);
-                          setShowDeleteModal(true);
-                        }}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="h-4 w-4 inline mr-1" />
-                        删除
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 分页组件 */}
-        <div className="px-4 py-3 bg-white border-t border-gray-200 flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            共 {total} 个项目
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="inline-flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditModal(project.id)}
+                            className="text-indigo-600 hover:text-indigo-700"
+                          >
+                            <Edit className="h-4 w-4" />
+                            编辑
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleStatus(project.id, project.status)}
+                            className="text-indigo-600 hover:text-indigo-700"
+                          >
+                            {project.status ? (
+                              <>
+                                <PowerOff className="h-4 w-4" />
+                                禁用
+                              </>
+                            ) : (
+                              <>
+                                <Power className="h-4 w-4" />
+                                启用
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setDeletingProjectId(project.id);
+                              setShowDeleteModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            删除
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-          {totalPages > 1 && (
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-700 mr-4">
-                第 {page} 页，共 {totalPages} 页
-              </span>
-              <button
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                上一页
-              </button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const startPage = Math.max(1, page - 2);
-                const pageNum = startPage + i;
-                if (pageNum > totalPages) return null;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setPage(pageNum)}
-                    className={`px-3 py-2 text-sm border border-gray-300 rounded-md transition-colors ${pageNum === page
-                      ? 'bg-indigo-600 text-white'
-                      : 'hover:bg-gray-50'
-                      }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                下一页
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+
+          {/* 分页组件 */}
+          <div className="mt-4 flex items-center justify-between">
+            <div className="text-sm text-gray-700">共 {total} 个项目</div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700 mr-2">
+                  第 {page} 页，共 {totalPages} 页
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                >
+                  上一页
+                </Button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const startPage = Math.max(1, page - 2);
+                  const pageNum = startPage + i;
+                  if (pageNum > totalPages) return null;
+                  const isCurrent = pageNum === page;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={isCurrent ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      className={isCurrent ? 'bg-indigo-600 hover:bg-indigo-700' : undefined}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === totalPages}
+                >
+                  下一页
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 创建项目弹框 */}
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="创建项目"
-      >
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              项目名称 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              required
-              maxLength={100}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">项目描述</label>
-            <textarea
-              name="description"
-              rows={4}
-              maxLength={500}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">有效期</label>
-            <input
-              type="datetime-local"
-              name="expires_at"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div className="flex justify-end space-x-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={() => setShowCreateModal(false)}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
-            >
-              创建
-            </button>
-          </div>
-        </form>
-      </Modal>
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>创建项目</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="create_name">
+                项目名称 <span className="text-red-500">*</span>
+              </Label>
+              <Input id="create_name" type="text" name="name" required maxLength={100} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create_description">项目描述</Label>
+              <Textarea id="create_description" name="description" rows={4} maxLength={500} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create_expires_at">有效期</Label>
+              <Input id="create_expires_at" type="datetime-local" name="expires_at" />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>
+                取消
+              </Button>
+              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+                创建
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* 编辑项目弹框 */}
-      <Modal
-        isOpen={showEditModal}
-        onClose={() => {
-          setShowEditModal(false);
-          setEditingProject(null);
+      <Dialog
+        open={showEditModal}
+        onOpenChange={(open) => {
+          setShowEditModal(open);
+          if (!open) setEditingProject(null);
         }}
-        title="编辑项目"
       >
-        {editingProject && (
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                项目名称 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                defaultValue={editingProject.name}
-                required
-                maxLength={100}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">项目描述</label>
-              <textarea
-                name="description"
-                rows={4}
-                maxLength={500}
-                defaultValue={editingProject.description || ''}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">有效期</label>
-              <input
-                type="datetime-local"
-                name="expires_at"
-                defaultValue={
-                  editingProject.expires_at
-                    ? new Date(editingProject.expires_at * 1000).toISOString().slice(0, 16)
-                    : ''
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="flex items-center">
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>编辑项目</DialogTitle>
+          </DialogHeader>
+          {editingProject && (
+            <form onSubmit={handleEdit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_name">
+                  项目名称 <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit_name"
+                  type="text"
+                  name="name"
+                  defaultValue={editingProject.name}
+                  required
+                  maxLength={100}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_description">项目描述</Label>
+                <Textarea
+                  id="edit_description"
+                  name="description"
+                  rows={4}
+                  maxLength={500}
+                  defaultValue={editingProject.description || ''}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_expires_at">有效期</Label>
+                <Input
+                  id="edit_expires_at"
+                  type="datetime-local"
+                  name="expires_at"
+                  defaultValue={timestampToDateTimeLocalValue(editingProject.expires_at)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
                 <input
+                  id="edit_status"
                   type="checkbox"
                   name="status"
                   defaultChecked={editingProject.status}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 rounded border-input text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
-                <span className="ml-2 text-sm text-gray-700">启用项目</span>
-              </label>
-            </div>
-            <div className="flex justify-end space-x-3 pt-4 border-t">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowEditModal(false);
-                  setEditingProject(null);
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
-              >
-                保存
-              </button>
-            </div>
-          </form>
-        )}
-      </Modal>
+                <Label htmlFor="edit_status">启用项目</Label>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingProject(null);
+                  }}
+                >
+                  取消
+                </Button>
+                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+                  保存
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* 删除确认弹框 */}
-      <ConfirmModal
-        isOpen={showDeleteModal}
-        onClose={() => {
-          setShowDeleteModal(false);
-          setDeletingProjectId(null);
+      <AlertDialog
+        open={showDeleteModal}
+        onOpenChange={(open) => {
+          setShowDeleteModal(open);
+          if (!open) setDeletingProjectId(null);
         }}
-        onConfirm={handleDelete}
-        title="确认删除"
-        message="确定要删除这个项目吗？这将删除所有关联的激活码！"
-      />
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除这个项目吗？这将删除所有关联的激活码！
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleDelete}
+            >
+              确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }

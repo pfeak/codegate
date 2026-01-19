@@ -33,6 +33,7 @@ from ..api.auth import require_admin
 from ..services.code import CodeService
 from ..services.project import ProjectService
 from ..core.exceptions import ProjectNotFoundError, CodeNotFoundError, CodeAlreadyVerifiedError
+from ..services.code.code_repository import CodeRepository
 
 router = APIRouter(prefix="/api/projects/{project_id}/codes", tags=["codes"])
 
@@ -173,6 +174,31 @@ def batch_disable_unused(
         )
     except ProjectNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/batch-disable-unused/count")
+def batch_disable_unused_count(
+    project_id: str,
+    search: Optional[str] = Query(None, description="搜索关键词"),
+    db: Session = Depends(get_db),
+    current_admin: AdminResponse = Depends(require_admin),
+):
+    """
+    获取当前筛选条件下可批量禁用的数量（用于前端确认弹框展示）。
+
+    规则与 batch_disable_unused 一致：
+    - 未使用(status=False)
+    - 未禁用(is_disabled=False)
+    - 未过期(is_expired=False)
+    - 支持 search 进一步筛选
+    """
+    # 检查项目是否存在
+    project = ProjectService.get_by_id(db=db, project_id=project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="项目不存在")
+
+    count = CodeRepository.count_disable_unused(db=db, project_id=project_id, search=search)
+    return {"count": count}
 
 
 # 独立的激活码API路由（不依赖project_id）
