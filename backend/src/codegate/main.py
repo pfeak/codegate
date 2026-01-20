@@ -19,17 +19,30 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 import logging
+from pathlib import Path
 
 from .config import settings
 from .database import init_db
-from .api import projects, codes, verify, auth, dashboard, verification_logs
+from .api import projects, codes, verify, auth, dashboard, verification_logs, audit_logs
 
-# 配置日志
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
 
+def configure_logging() -> None:
+    """配置日志到 stdout + 可选文件"""
+    handlers: list[logging.Handler] = [logging.StreamHandler()]
+    if settings.LOG_FILE:
+        log_file_path = Path(settings.LOG_FILE)
+        log_file_path.parent.mkdir(parents=True, exist_ok=True)
+        handlers.append(logging.FileHandler(log_file_path, encoding="utf-8"))
+
+    logging.basicConfig(
+        level=getattr(logging, settings.LOG_LEVEL),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=handlers,
+        force=True,  # 确保重复导入时也能写入文件
+    )
+
+
+configure_logging()
 logger = logging.getLogger(__name__)
 
 # 创建 FastAPI 应用
@@ -58,6 +71,7 @@ app.include_router(codes.router)
 app.include_router(codes.router_standalone)  # 独立的激活码API路由
 app.include_router(verify.router)
 app.include_router(verification_logs.router)
+app.include_router(audit_logs.router)
 
 
 @app.on_event("startup")

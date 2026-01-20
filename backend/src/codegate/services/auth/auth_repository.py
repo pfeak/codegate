@@ -54,8 +54,6 @@ class AuthRepository:
             Admin: 创建的管理员对象
         """
         db.add(admin)
-        db.commit()
-        db.refresh(admin)
         return admin
 
     @staticmethod
@@ -72,8 +70,6 @@ class AuthRepository:
         """
         from datetime import datetime
         admin.last_login_at = datetime.utcnow()
-        db.commit()
-        db.refresh(admin)
         return admin
 
     @staticmethod
@@ -91,6 +87,4 @@ class AuthRepository:
         """
         admin.password_hash = password_hash
         admin.is_initial_password = False
-        db.commit()
-        db.refresh(admin)
         return admin

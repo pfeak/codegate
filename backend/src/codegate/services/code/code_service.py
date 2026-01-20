@@ -100,7 +100,11 @@ class CodeService:
             for code in new_codes
         ]
 
-        return CodeRepository.create_batch(db, invitation_codes)
+        created = CodeRepository.create_batch(db, invitation_codes)
+        db.commit()
+        for code in created:
+            db.refresh(code)
+        return created
 
     @staticmethod
     def get_by_id(db: Session, code_id: str) -> Optional[InvitationCode]:
@@ -118,7 +122,8 @@ class CodeService:
         if code:
             changed = CodeService.refresh_expired_state(code)
             if changed:
-                CodeRepository.update(db, code)
+                db.commit()
+                db.refresh(code)
         return code
 
     @staticmethod
@@ -137,7 +142,8 @@ class CodeService:
         if code_obj:
             changed = CodeService.refresh_expired_state(code_obj)
             if changed:
-                CodeRepository.update(db, code_obj)
+                db.commit()
+                db.refresh(code_obj)
         return code_obj
 
     @staticmethod
@@ -176,6 +182,8 @@ class CodeService:
                 changed = True
         if changed:
             db.commit()
+            for code in codes:
+                db.refresh(code)
         return codes, total
 
     @staticmethod
@@ -195,6 +203,7 @@ class CodeService:
             return False
 
         CodeRepository.delete(db, code)
+        db.commit()
         return True
 
     @staticmethod
@@ -209,7 +218,9 @@ class CodeService:
         Returns:
             int: 删除的数量
         """
-        return CodeRepository.delete_batch(db, code_ids)
+        count = CodeRepository.delete_batch(db, code_ids)
+        db.commit()
+        return count
 
     @staticmethod
     def update(db: Session, code: InvitationCode) -> InvitationCode:
@@ -223,7 +234,10 @@ class CodeService:
         Returns:
             InvitationCode: 更新后的激活码
         """
-        return CodeRepository.update(db, code)
+        updated = CodeRepository.update(db, code)
+        db.commit()
+        db.refresh(updated)
+        return updated
 
     @staticmethod
     def update_by_id(
@@ -282,7 +296,10 @@ class CodeService:
             else:
                 code.is_expired = False
 
-        return CodeRepository.update(db, code)
+        updated = CodeRepository.update(db, code)
+        db.commit()
+        db.refresh(updated)
+        return updated
 
     @staticmethod
     def batch_disable_unused(
@@ -313,13 +330,15 @@ class CodeService:
         if not project:
             raise ProjectNotFoundError(project_id)
 
-        return CodeRepository.batch_disable_unused(
+        disabled = CodeRepository.batch_disable_unused(
             db=db,
             project_id=project_id,
             status=status,
             is_disabled=is_disabled,
             search=search,
         )
+        db.commit()
+        return disabled
 
     # 内部工具：基于 expires_at / project.expires_at 计算并刷新 is_expired
     @staticmethod

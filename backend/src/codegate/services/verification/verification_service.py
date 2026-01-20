@@ -33,6 +33,7 @@ from ...core.exceptions import (
 from ..code.code_repository import CodeRepository
 from ..code.code_service import CodeService
 from .verification_repository import VerificationRepository
+from ...utils.audit_log import log_external
 
 
 class VerificationService:
@@ -68,61 +69,94 @@ class VerificationService:
         # 查找激活码
         code = CodeService.get_by_code(db, request.code)
 
-        if not code:
-            # 记录失败日志
+        try:
+            if not code:
+                # 记录失败日志（verification_log 无法记录，因为 code_id 为空）
+                # 但可以记录审计日志
+                log_external(db, "verify_code", "code", None, "failed", ip_address=ip_address,
+                             user_agent=user_agent, reason="激活码不存在", code=request.code, verified_by=request.verified_by)
+                db.commit()
+                # 未找到不需要提交，直接抛出
+                raise CodeNotFoundError(request.code)
+
+            # 检查是否已禁用
+            if code.is_disabled:
+                VerificationService._log_verification(
+                    db, code.id, False, "激活码已禁用", ip_address, user_agent, request.verified_by
+                )
+                log_external(db, "verify_code", "code", code.id, "failed", ip_address=ip_address,
+                             user_agent=user_agent, reason="激活码已禁用", verified_by=request.verified_by)
+                raise CodeDisabledError(request.code)
+
+            # 检查是否已核销
+            if code.status:
+                VerificationService._log_verification(
+                    db, code.id, False, "激活码已使用", ip_address, user_agent, request.verified_by
+                )
+                log_external(db, "verify_code", "code", code.id, "failed", ip_address=ip_address,
+                             user_agent=user_agent, reason="激活码已使用", verified_by=request.verified_by)
+                raise CodeAlreadyVerifiedError(request.code)
+
+            # 检查是否过期
+            if code.is_expired:
+                VerificationService._log_verification(
+                    db, code.id, False, "激活码已过期", ip_address, user_agent, request.verified_by
+                )
+                log_external(db, "verify_code", "code", code.id, "failed", ip_address=ip_address,
+                             user_agent=user_agent, reason="激活码已过期", verified_by=request.verified_by)
+                raise CodeExpiredError(request.code)
+
+            # 检查项目是否启用
+            if not code.project.status:
+                VerificationService._log_verification(
+                    db, code.id, False, "项目已禁用", ip_address, user_agent, request.verified_by
+                )
+                log_external(db, "verify_code", "code", code.id, "failed", ip_address=ip_address,
+                             user_agent=user_agent, reason="项目已禁用", verified_by=request.verified_by, project_id=code.project_id)
+                raise ProjectDisabledError(code.project_id)
+
+            # 检查项目是否过期
+            if code.project.is_expired:
+                VerificationService._log_verification(
+                    db, code.id, False, "项目已过期", ip_address, user_agent, request.verified_by
+                )
+                log_external(db, "verify_code", "code", code.id, "failed", ip_address=ip_address,
+                             user_agent=user_agent, reason="项目已过期", verified_by=request.verified_by, project_id=code.project_id)
+                raise ProjectExpiredError(code.project_id)
+
+            # 核销成功
+            code.status = True
+            code.verified_at = datetime.utcnow()
+            code.verified_by = request.verified_by
+
+            # 记录成功日志
             VerificationService._log_verification(
-                db, None, False, "激活码不存在", ip_address, user_agent, request.verified_by
+                db, code.id, True, None, ip_address, user_agent, request.verified_by
             )
-            raise CodeNotFoundError(request.code)
 
-        # 检查是否已禁用
-        if code.is_disabled:
-            VerificationService._log_verification(
-                db, code.id, False, "激活码已禁用", ip_address, user_agent, request.verified_by
-            )
-            raise CodeDisabledError(request.code)
+            # 记录审计日志（核销成功）
+            log_external(db, "verify_code", "code", code.id, "success", ip_address=ip_address,
+                         user_agent=user_agent, verified_by=request.verified_by, project_id=code.project_id)
 
-        # 检查是否已核销
-        if code.status:
-            VerificationService._log_verification(
-                db, code.id, False, "激活码已使用", ip_address, user_agent, request.verified_by
-            )
-            raise CodeAlreadyVerifiedError(request.code)
+            CodeRepository.update(db, code)
 
-        # 检查是否过期
-        if code.is_expired:
-            VerificationService._log_verification(
-                db, code.id, False, "激活码已过期", ip_address, user_agent, request.verified_by
-            )
-            raise CodeExpiredError(request.code)
-
-        # 检查项目是否启用
-        if not code.project.status:
-            VerificationService._log_verification(
-                db, code.id, False, "项目已禁用", ip_address, user_agent, request.verified_by
-            )
-            raise ProjectDisabledError(code.project_id)
-
-        # 检查项目是否过期
-        if code.project.is_expired:
-            VerificationService._log_verification(
-                db, code.id, False, "项目已过期", ip_address, user_agent, request.verified_by
-            )
-            raise ProjectExpiredError(code.project_id)
-
-        # 核销成功
-        code.status = True
-        code.verified_at = datetime.utcnow()
-        code.verified_by = request.verified_by
-
-        # 记录成功日志
-        VerificationService._log_verification(
-            db, code.id, True, None, ip_address, user_agent, request.verified_by
-        )
-
-        CodeRepository.update(db, code)
-
-        return code
+            db.commit()
+            db.refresh(code)
+            return code
+        except (
+            CodeNotFoundError,
+            CodeAlreadyVerifiedError,
+            CodeDisabledError,
+            CodeExpiredError,
+            ProjectDisabledError,
+            ProjectExpiredError,
+        ):
+            # 业务异常：提交（保留日志），再抛出
+            db.commit()
+            raise
+        except Exception:
+            db.rollback()
+            raise
 
     @staticmethod
     def _log_verification(

@@ -37,8 +37,6 @@ class VerificationRepository:
             VerificationLog: 创建的核销日志
         """
         db.add(log)
-        db.commit()
-        db.refresh(log)
         return log
 
     @staticmethod

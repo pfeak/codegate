@@ -19,16 +19,19 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import Optional
+import secrets
 
 from ..database import get_db
 from ..schemas.auth import LoginRequest, AdminResponse, ChangePasswordRequest
 from ..services.auth import AuthService
+from ..config import settings
+from ..utils.session_store import get_session_store
+from ..utils.audit_log import log_admin, log_external
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 security = HTTPBearer(auto_error=False)
 
-# 简单的会话存储(生产环境应使用Redis等)
-_sessions: dict[str, str] = {}
+session_store = get_session_store(settings)
 
 
 def get_current_admin(
@@ -54,10 +57,10 @@ def get_current_admin(
         if credentials:
             session_id = credentials.credentials
 
-    if not session_id or session_id not in _sessions:
+    if not session_id:
         return None
 
-    admin_id = _sessions.get(session_id)
+    admin_id = session_store.get(session_id)
     if not admin_id:
         return None
 
@@ -100,12 +103,15 @@ async def login(
     """
     admin = AuthService.authenticate(db, payload)
     if not admin:
+        # 记录登录失败审计日志（尝试登录但失败）
+        log_external(db, "login_failed", "session", None, "failed", request=request,
+                     username=payload.username, reason="用户名或密码错误")
+        db.commit()
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
     # 生成session_id
-    import secrets
     session_id = secrets.token_urlsafe(32)
-    _sessions[session_id] = admin.id
+    session_store.set(session_id, admin.id)
 
     # 设置安全Cookie
     #
@@ -118,8 +124,13 @@ async def login(
         httponly=True,
         secure=secure_cookie,
         samesite="strict",
-        max_age=86400 * 7,  # 7天
+        max_age=settings.SESSION_TTL_SECONDS,
     )
+
+    # 记录登录成功审计日志
+    log_admin(db, "login", admin.id, "session", session_id, "success", request=request,
+              username=admin.username, is_initial_password=admin.is_initial_password)
+    db.commit()
 
     admin_response = AdminResponse.model_validate(admin)
     return {
@@ -136,13 +147,22 @@ async def login(
 async def logout(
     request: Request,
     response: Response,
+    db: Session = Depends(get_db),
+    current_admin: Optional[AdminResponse] = Depends(get_current_admin),
 ):
     """
     管理员登出
     """
     session_id = request.cookies.get("session_id")
-    if session_id and session_id in _sessions:
-        del _sessions[session_id]
+    admin_id = current_admin.id if current_admin else None
+
+    if session_id:
+        session_store.delete(session_id)
+
+        # 记录登出审计日志（仅当有有效会话时）
+        if admin_id:
+            log_admin(db, "logout", admin_id, "session", session_id, "success", request=request)
+            db.commit()
 
     secure_cookie = request.url.scheme == "https"
     response.delete_cookie(key="session_id", httponly=True, secure=secure_cookie, samesite="strict")
@@ -175,7 +195,8 @@ def check_initial_password(
 
 @router.post("/change-password")
 def change_password(
-    request: ChangePasswordRequest,
+    request: Request,
+    payload: ChangePasswordRequest,
     current_admin: AdminResponse = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
@@ -186,13 +207,23 @@ def change_password(
         admin = AuthService.change_password(
             db=db,
             admin_id=current_admin.id,
-            old_password=request.old_password,
-            new_password=request.new_password,
+            old_password=payload.old_password,
+            new_password=payload.new_password,
         )
+
+        # 记录密码修改成功审计日志
+        log_admin(db, "change_password", current_admin.id, "admin", current_admin.id, "success",
+                  request=request, username=admin.username)
+        db.commit()
+
         return {
             "success": True,
             "message": "密码修改成功",
             "admin": AdminResponse.model_validate(admin),
         }
     except ValueError as e:
+        # 记录密码修改失败审计日志
+        log_admin(db, "change_password", current_admin.id, "admin", current_admin.id, "failed",
+                  request=request, username=current_admin.username, reason=str(e))
+        db.commit()
         raise HTTPException(status_code=400, detail=str(e))

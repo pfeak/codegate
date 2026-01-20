@@ -77,6 +77,8 @@ class AuthService:
 
         # 更新最后登录时间
         AuthRepository.update_last_login(db, admin)
+        db.commit()
+        db.refresh(admin)
         return admin
 
     @staticmethod

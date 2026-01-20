@@ -37,9 +37,7 @@ class CodeRepository:
             list[InvitationCode]: 创建的激活码列表
         """
         db.add_all(codes)
-        db.commit()
-        for code in codes:
-            db.refresh(code)
+        db.flush()  # 确保主键等默认值被填充
         return codes
 
     @staticmethod
@@ -151,8 +149,6 @@ class CodeRepository:
         Returns:
             InvitationCode: 更新后的激活码
         """
-        db.commit()
-        db.refresh(code)
         return code
 
     @staticmethod
@@ -165,7 +161,6 @@ class CodeRepository:
             code: 激活码对象
         """
         db.delete(code)
-        db.commit()
 
     @staticmethod
     def delete_batch(db: Session, code_ids: list[str]) -> int:
@@ -180,7 +175,6 @@ class CodeRepository:
             int: 删除的数量
         """
         count = db.query(InvitationCode).filter(InvitationCode.id.in_(code_ids)).delete(synchronize_session=False)
-        db.commit()
         return count
 
     @staticmethod
@@ -217,7 +211,6 @@ class CodeRepository:
 
         # 批量更新
         count = query.update({"is_disabled": True}, synchronize_session=False)
-        db.commit()
         return count
 
     @staticmethod

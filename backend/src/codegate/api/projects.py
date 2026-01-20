@@ -19,6 +19,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from fastapi import Request
+
 from ..database import get_db
 from ..models.project import Project
 from ..schemas.project import (
@@ -34,6 +36,7 @@ from ..core.exceptions import (
     ProjectNotFoundError,
     ProjectAlreadyExistsError,
 )
+from ..utils.audit_log import log_admin
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -68,6 +71,7 @@ def get_projects(
 
 @router.post("", response_model=ProjectResponse, status_code=201)
 def create_project(
+    request: Request,
     project_data: ProjectCreate,
     db: Session = Depends(get_db),
     current_admin: AdminResponse = Depends(require_admin),
@@ -77,8 +81,16 @@ def create_project(
     """
     try:
         project = ProjectService.create(db=db, project_data=project_data)
+        # 记录审计日志
+        log_admin(db, "create_project", current_admin.id, "project", project.id, "success",
+                  request=request, project_name=project.name, description=project.description)
+        db.commit()
         return ProjectResponse.model_validate(project)
     except ProjectAlreadyExistsError as e:
+        # 记录失败审计日志
+        log_admin(db, "create_project", current_admin.id, "project", None, "failed",
+                  request=request, project_name=project_data.name, reason=str(e))
+        db.commit()
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -117,6 +129,7 @@ def get_project(
 
 @router.put("/{project_id}", response_model=ProjectResponse)
 def update_project(
+    request: Request,
     project_id: str,
     project_data: ProjectUpdate,
     db: Session = Depends(get_db),
@@ -126,16 +139,43 @@ def update_project(
     更新项目
     """
     try:
+        # 获取更新前的项目信息
+        old_project = ProjectService.get_by_id(db=db, project_id=project_id)
+        old_data = {
+            "name": old_project.name if old_project else None,
+            "description": old_project.description if old_project else None,
+            "status": old_project.status if old_project else None,
+            "expires_at": old_project.expires_at.isoformat() if old_project and old_project.expires_at else None,
+        } if old_project else None
+
         project = ProjectService.update(db=db, project_id=project_id, project_data=project_data)
+
+        # 记录审计日志
+        new_data = {
+            "name": project.name,
+            "description": project.description,
+            "status": project.status,
+            "expires_at": project.expires_at.isoformat() if project.expires_at else None,
+        }
+        log_admin(db, "update_project", current_admin.id, "project", project_id, "success",
+                  request=request, before=old_data, after=new_data)
+        db.commit()
         return ProjectResponse.model_validate(project)
     except ProjectNotFoundError as e:
+        log_admin(db, "update_project", current_admin.id, "project", project_id, "failed",
+                  request=request, reason=str(e))
+        db.commit()
         raise HTTPException(status_code=404, detail=str(e))
     except ProjectAlreadyExistsError as e:
+        log_admin(db, "update_project", current_admin.id, "project", project_id, "failed",
+                  request=request, reason=str(e))
+        db.commit()
         raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.delete("/{project_id}", status_code=204)
 def delete_project(
+    request: Request,
     project_id: str,
     db: Session = Depends(get_db),
     current_admin: AdminResponse = Depends(require_admin),
@@ -144,6 +184,21 @@ def delete_project(
     删除项目
     """
     try:
+        # 获取删除前的项目信息
+        old_project = ProjectService.get_by_id(db=db, project_id=project_id)
+        deleted_data = {
+            "name": old_project.name if old_project else None,
+            "description": old_project.description if old_project else None,
+        } if old_project else None
+
         ProjectService.delete(db=db, project_id=project_id)
+
+        # 记录审计日志
+        log_admin(db, "delete_project", current_admin.id, "project", project_id, "success",
+                  request=request, deleted=deleted_data)
+        db.commit()
     except ProjectNotFoundError as e:
+        log_admin(db, "delete_project", current_admin.id, "project", project_id, "failed",
+                  request=request, reason=str(e))
+        db.commit()
         raise HTTPException(status_code=404, detail=str(e))

@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     # 文件上传配置
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
 
+    # 会话配置
+    SESSION_BACKEND: str = "memory"  # memory | redis
+    SESSION_REDIS_URL: Optional[str] = None
+    SESSION_TTL_SECONDS: int = 86400 * 7  # 默认 7 天
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

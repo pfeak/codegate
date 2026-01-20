@@ -61,7 +61,10 @@ class ProjectService:
             expires_at=expires_at,
             status=True,
         )
-        return ProjectRepository.create(db, project)
+        created = ProjectRepository.create(db, project)
+        db.commit()
+        db.refresh(created)
+        return created
 
     @staticmethod
     def get_by_id(db: Session, project_id: str) -> Optional[Project]:
@@ -134,7 +137,10 @@ class ProjectService:
         if project_data.status is not None:
             project.status = project_data.status
 
-        return ProjectRepository.update(db, project)
+        updated = ProjectRepository.update(db, project)
+        db.commit()
+        db.refresh(updated)
+        return updated
 
     @staticmethod
     def delete(db: Session, project_id: str) -> bool:
@@ -156,6 +162,7 @@ class ProjectService:
             raise ProjectNotFoundError(project_id)
 
         ProjectRepository.delete(db, project)
+        db.commit()
         return True
 
     @staticmethod

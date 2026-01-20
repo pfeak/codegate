@@ -86,6 +86,14 @@ def verify_code(
         # 速率限制按 429 返回
         raise HTTPException(status_code=429, detail=str(e))
     except CodeNotFoundError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except (CodeAlreadyVerifiedError, CodeDisabledError, CodeExpiredError, ProjectDisabledError, ProjectExpiredError) as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # 激活码不存在：返回 404
+        raise HTTPException(status_code=404, detail=str(e))
+    except (
+        CodeAlreadyVerifiedError,
+        CodeDisabledError,
+        CodeExpiredError,
+        ProjectDisabledError,
+        ProjectExpiredError,
+    ) as e:
+        # 状态冲突：返回 409
+        raise HTTPException(status_code=409, detail=str(e))

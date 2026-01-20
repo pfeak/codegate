@@ -38,8 +38,6 @@ class ProjectRepository:
             Project: 创建的项目
         """
         db.add(project)
-        db.commit()
-        db.refresh(project)
         return project
 
     @staticmethod
@@ -127,8 +125,6 @@ class ProjectRepository:
         Returns:
             Project: 更新后的项目
         """
-        db.commit()
-        db.refresh(project)
         return project
 
     @staticmethod
@@ -141,7 +137,6 @@ class ProjectRepository:
             project: 项目对象
         """
         db.delete(project)
-        db.commit()
 
     @staticmethod
     def exists(db: Session, project_id: int) -> bool:
