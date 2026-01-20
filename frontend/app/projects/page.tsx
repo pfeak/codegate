@@ -25,13 +25,14 @@ import MainLayout from '@/components/layout/MainLayout';
 import { DEFAULT_PAGE_SIZE, projectsApi } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { getErrorMessage, timestampToLocal, truncateText, dateTimeLocalToTimestamp, timestampToDateTimeLocalValue, shortUuid } from '@/lib/utils';
-import { Search, Plus, Edit, Trash2, Power, PowerOff } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Power, PowerOff, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -83,6 +84,9 @@ export default function ProjectsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [isNeverExpiresCreate, setIsNeverExpiresCreate] = useState(false);
+  const [isNeverExpiresEdit, setIsNeverExpiresEdit] = useState(false);
+  const [editStatus, setEditStatus] = useState(false);
 
   const pageSize = DEFAULT_PAGE_SIZE;
 
@@ -165,14 +169,25 @@ export default function ProjectsPage() {
     const description = formData.get('description') as string;
     const expiresAt = formData.get('expires_at') as string;
 
+    // 日期验证：确保不为过去时间
+    if (expiresAt && !isNeverExpiresCreate) {
+      const selectedDate = new Date(expiresAt);
+      const now = new Date();
+      if (selectedDate < now) {
+        toast.error('创建失败：不能选择过去的日期');
+        return;
+      }
+    }
+
     try {
       const created = await projectsApi.create({
         name: name.trim(),
         description: description.trim() || null,
-        expires_at: expiresAt ? dateTimeLocalToTimestamp(expiresAt) : null,
+        expires_at: isNeverExpiresCreate || !expiresAt ? null : dateTimeLocalToTimestamp(expiresAt),
       });
       toast.success('创建成功');
       setShowCreateModal(false);
+      setIsNeverExpiresCreate(false);
       setPage(1);
       syncQuery({ page: 1, search, status });
       setProjects((prev) => [created, ...prev].slice(0, pageSize));
@@ -196,19 +211,32 @@ export default function ProjectsPage() {
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
     const expiresAt = formData.get('expires_at') as string;
-    const status = (formData.get('status') as string) === 'on';
+    // 使用state中的状态值
+    const status = editStatus;
+
+    // 日期验证：确保不为过去时间
+    if (expiresAt && !isNeverExpiresEdit) {
+      const selectedDate = new Date(expiresAt);
+      const now = new Date();
+      if (selectedDate < now) {
+        toast.error('保存失败：不能选择过去的日期');
+        return;
+      }
+    }
 
     try {
       const updated = await projectsApi.update(editingProject.id, {
         name: name.trim(),
         description: description.trim() || null,
-        expires_at: expiresAt ? dateTimeLocalToTimestamp(expiresAt) : null,
+        expires_at: isNeverExpiresEdit || !expiresAt ? null : dateTimeLocalToTimestamp(expiresAt),
         status,
       });
       // PRD：编辑成功统一为“保存成功”
       toast.success('保存成功');
       setShowEditModal(false);
       setEditingProject(null);
+      setIsNeverExpiresEdit(false);
+      setEditStatus(false);
       replaceProjectInList(updated);
     } catch (error: any) {
       const msg = getErrorMessage(error, '保存失败：请稍后重试');
@@ -266,6 +294,10 @@ export default function ProjectsPage() {
     try {
       const project = await projectsApi.get(projectId);
       setEditingProject(project);
+      // 根据expires_at初始化"永不过期"开关状态
+      setIsNeverExpiresEdit(!project.expires_at);
+      // 初始化状态开关
+      setEditStatus(project.status);
       setShowEditModal(true);
     } catch (error: any) {
       toast.error(getErrorMessage(error, '加载项目数据失败'));
@@ -502,7 +534,15 @@ export default function ProjectsPage() {
       </Card>
 
       {/* 创建项目弹框 */}
-      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+      <Dialog 
+        open={showCreateModal} 
+        onOpenChange={(open) => {
+          setShowCreateModal(open);
+          if (!open) {
+            setIsNeverExpiresCreate(false);
+          }
+        }}
+      >
         <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>创建项目</DialogTitle>
@@ -520,10 +560,40 @@ export default function ProjectsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="create_expires_at">有效期</Label>
-              <Input id="create_expires_at" type="datetime-local" name="expires_at" />
+              <div className="relative inline-flex w-full max-w-sm">
+                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                <Input 
+                  id="create_expires_at" 
+                  type="datetime-local" 
+                  name="expires_at" 
+                  disabled={isNeverExpiresCreate}
+                  min={new Date().toISOString().slice(0, 16)}
+                  className="pl-10 pr-3 w-auto min-w-[240px]"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="create_never_expires"
+                  checked={isNeverExpiresCreate}
+                  onCheckedChange={(checked) => {
+                    setIsNeverExpiresCreate(checked);
+                    if (checked) {
+                      const input = document.getElementById('create_expires_at') as HTMLInputElement;
+                      if (input) input.value = '';
+                    }
+                  }}
+                />
+                <Label htmlFor="create_never_expires">永不过期</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                留空或选择未来日期，项目将在指定时间后过期
+              </p>
             </div>
             <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>
+              <Button type="button" variant="secondary" onClick={() => {
+                setShowCreateModal(false);
+                setIsNeverExpiresCreate(false);
+              }}>
                 取消
               </Button>
               <Button type="submit">
@@ -539,7 +609,11 @@ export default function ProjectsPage() {
         open={showEditModal}
         onOpenChange={(open) => {
           setShowEditModal(open);
-          if (!open) setEditingProject(null);
+          if (!open) {
+            setEditingProject(null);
+            setIsNeverExpiresEdit(false);
+            setEditStatus(false);
+          }
         }}
       >
         <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -575,20 +649,52 @@ export default function ProjectsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit_expires_at">有效期</Label>
-                <Input
-                  id="edit_expires_at"
-                  type="datetime-local"
-                  name="expires_at"
-                  defaultValue={timestampToDateTimeLocalValue(editingProject.expires_at)}
-                />
+                <div className="relative inline-flex w-full max-w-sm">
+                  <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                  <Input
+                    id="edit_expires_at"
+                    type="datetime-local"
+                    name="expires_at"
+                    defaultValue={timestampToDateTimeLocalValue(editingProject.expires_at)}
+                    disabled={isNeverExpiresEdit}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="pl-10 pr-3 w-auto min-w-[240px]"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="edit_never_expires"
+                    checked={isNeverExpiresEdit}
+                    onCheckedChange={(checked) => {
+                      setIsNeverExpiresEdit(checked);
+                      const input = document.getElementById('edit_expires_at') as HTMLInputElement;
+                      if (input) {
+                        if (checked) {
+                          input.value = '';
+                        } else if (editingProject.expires_at) {
+                          input.value = timestampToDateTimeLocalValue(editingProject.expires_at);
+                        }
+                      }
+                    }}
+                  />
+                  <Label htmlFor="edit_never_expires">永不过期</Label>
+                </div>
+                <div className="space-y-1">
+                  {editingProject.is_expired && (
+                    <p className="text-sm text-destructive">
+                      该项目已过期
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    留空或选择未来日期，项目将在指定时间后过期
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
-                <input
+                <Switch
                   id="edit_status"
-                  type="checkbox"
-                  name="status"
-                  defaultChecked={editingProject.status}
-                  className="h-4 w-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  checked={editStatus}
+                  onCheckedChange={setEditStatus}
                 />
                 <Label htmlFor="edit_status">启用项目</Label>
               </div>
@@ -599,6 +705,8 @@ export default function ProjectsPage() {
                   onClick={() => {
                     setShowEditModal(false);
                     setEditingProject(null);
+                    setIsNeverExpiresEdit(false);
+                    setEditStatus(false);
                   }}
                 >
                   取消

@@ -25,13 +25,14 @@ import MainLayout from '@/components/layout/MainLayout';
 import { projectsApi, codesApi, DEFAULT_PAGE_SIZE } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { getErrorMessage, timestampToLocal, dateTimeLocalToTimestamp, formatNumber, timestampToDateTimeLocalValue, shortUuid } from '@/lib/utils';
-import { ArrowLeft, Plus, Edit, Trash2, Power, PowerOff, RotateCcw, Ban, Copy, Search, Loader2, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Power, PowerOff, RotateCcw, Ban, Copy, Search, Loader2, Check, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -90,6 +91,8 @@ export default function ProjectDetailPage() {
   const [sortBy, setSortBy] = useState<'created_at' | 'verified_at'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [generateLoading, setGenerateLoading] = useState(false);
+  const [isNeverExpiresEdit, setIsNeverExpiresEdit] = useState(false);
+  const [editStatus, setEditStatus] = useState(false);
 
   const pageSize = DEFAULT_PAGE_SIZE;
 
@@ -489,7 +492,13 @@ export default function ProjectDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowEditProjectDialog(true)}
+              onClick={() => {
+                if (project) {
+                  setIsNeverExpiresEdit(!project.expires_at);
+                  setEditStatus(project.status);
+                }
+                setShowEditProjectDialog(true);
+              }}
             >
               <Edit className="h-4 w-4" />
               编辑
@@ -975,45 +984,101 @@ export default function ProjectDetailPage() {
       </AlertDialog>
 
       {/* 编辑项目弹框 */}
-      <Dialog open={showEditProjectDialog} onOpenChange={setShowEditProjectDialog}>
+      <Dialog 
+        open={showEditProjectDialog} 
+        onOpenChange={(open) => {
+          setShowEditProjectDialog(open);
+          if (!open) {
+            setIsNeverExpiresEdit(false);
+            setEditStatus(false);
+          }
+        }}
+      >
         <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>编辑项目</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleEditProject} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="proj_name">
-                项目名称 <span className="text-destructive">*</span>
-              </Label>
-              <Input id="proj_name" name="name" required maxLength={100} defaultValue={project.name} className="placeholder:text-muted-foreground/60" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="proj_desc">项目描述</Label>
-              <Textarea id="proj_desc" name="description" rows={4} maxLength={500} defaultValue={project.description || ''} className="placeholder:text-muted-foreground/60" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="proj_expires">有效期</Label>
-              <Input id="proj_expires" type="datetime-local" name="expires_at" defaultValue={timestampToDateTimeLocalValue(project.expires_at)} />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                id="proj_status"
-                type="checkbox"
-                name="status"
-                defaultChecked={project.status}
-                className="h-4 w-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <Label htmlFor="proj_status">启用项目</Label>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setShowEditProjectDialog(false)}>
-                取消
-              </Button>
-              <Button type="submit">
-                保存
-              </Button>
-            </DialogFooter>
-          </form>
+          {project && (
+            <form onSubmit={handleEditProject} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="proj_name">
+                  项目名称 <span className="text-destructive">*</span>
+                </Label>
+                <Input id="proj_name" name="name" required maxLength={100} defaultValue={project.name} className="placeholder:text-muted-foreground/60" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proj_desc">项目描述</Label>
+                <Textarea id="proj_desc" name="description" rows={4} maxLength={500} defaultValue={project.description || ''} className="placeholder:text-muted-foreground/60" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proj_expires">有效期</Label>
+                <div className="relative inline-flex w-full max-w-sm">
+                  <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                  <Input 
+                    id="proj_expires" 
+                    type="datetime-local" 
+                    name="expires_at" 
+                    defaultValue={timestampToDateTimeLocalValue(project.expires_at)}
+                    disabled={isNeverExpiresEdit}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="pl-10 pr-3 w-auto min-w-[240px]"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="proj_never_expires"
+                    checked={isNeverExpiresEdit}
+                    onCheckedChange={(checked) => {
+                      setIsNeverExpiresEdit(checked);
+                      const input = document.getElementById('proj_expires') as HTMLInputElement;
+                      if (input) {
+                        if (checked) {
+                          input.value = '';
+                        } else if (project.expires_at) {
+                          input.value = timestampToDateTimeLocalValue(project.expires_at);
+                        }
+                      }
+                    }}
+                  />
+                  <Label htmlFor="proj_never_expires">永不过期</Label>
+                </div>
+                <div className="space-y-1">
+                  {project.is_expired && (
+                    <p className="text-sm text-destructive">
+                      该项目已过期
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    留空或选择未来日期，项目将在指定时间后过期
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="proj_status"
+                  checked={editStatus}
+                  onCheckedChange={setEditStatus}
+                />
+                <Label htmlFor="proj_status">启用项目</Label>
+              </div>
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  onClick={() => {
+                    setShowEditProjectDialog(false);
+                    setIsNeverExpiresEdit(false);
+                    setEditStatus(false);
+                  }}
+                >
+                  取消
+                </Button>
+                <Button type="submit">
+                  保存
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 
