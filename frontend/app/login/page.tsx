@@ -85,6 +85,7 @@ export default function LoginPage() {
                   required
                   placeholder="请输入用户名"
                   autoComplete="username"
+                  className="placeholder:text-muted-foreground/60"
                 />
               </div>
 
@@ -100,6 +101,7 @@ export default function LoginPage() {
                   required
                   placeholder="请输入密码"
                   autoComplete="current-password"
+                  className="placeholder:text-muted-foreground/60"
                 />
               </div>
 

@@ -101,6 +101,7 @@ export default function VerifyPage() {
       });
 
       if (data.success) {
+        // PRD：核销成功不弹 Toast，仅在结果卡片中展示
         // 清空输入框
         setCode('');
         setVerifiedBy('');
@@ -112,7 +113,9 @@ export default function VerifyPage() {
           codeInputRef.current?.focus();
         }, 100);
       }
+      // 失败情况已在 setResult 中设置，结果卡片会自动展示
     } catch (error: any) {
+      // PRD：网络/服务器错误不弹 Toast，仅在结果卡片中展示
       const errorMessage = getErrorMessage(error, '核销失败，请稍后重试');
       setResult({
         success: false,
@@ -145,7 +148,7 @@ export default function VerifyPage() {
           <CardTitle className="text-xl">验证激活码</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="code">
                 激活码 <span className="text-destructive">*</span>
@@ -168,7 +171,7 @@ export default function VerifyPage() {
                 }}
                 required
                 disabled={loading}
-                className="font-mono"
+                className="font-mono placeholder:text-muted-foreground/60"
                 placeholder="请输入激活码（支持粘贴）"
                 autoComplete="off"
               />
@@ -185,6 +188,7 @@ export default function VerifyPage() {
                 maxLength={100}
                 placeholder="请输入核销用户（可选）"
                 autoComplete="off"
+                className="placeholder:text-muted-foreground/60"
               />
             </div>
 
@@ -240,10 +244,13 @@ export default function VerifyPage() {
               )}
               <div className="flex-1">
                 <p className={`font-medium ${result.success ? 'text-foreground' : 'text-destructive'}`}>
-                  {result.message}
+                  {result.success 
+                    ? (result.project_name ? `核销成功：${result.project_name}` : '核销成功')
+                    : result.message
+                  }
                 </p>
                 {result.success && result.project_name && (
-                  <p className="mt-2 text-sm text-muted-foreground">项目名称：{result.project_name}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">所属项目：{result.project_name}</p>
                 )}
                 {result.success && result.verified_at && (
                   <p className="mt-1 text-sm text-muted-foreground">核销时间：{timestampToLocal(result.verified_at)}</p>

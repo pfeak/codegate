@@ -25,7 +25,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import { projectsApi, codesApi, DEFAULT_PAGE_SIZE } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { getErrorMessage, timestampToLocal, dateTimeLocalToTimestamp, formatNumber, timestampToDateTimeLocalValue, shortUuid } from '@/lib/utils';
-import { ArrowLeft, Plus, Edit, Trash2, Power, PowerOff, RotateCcw, Ban, Copy, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Power, PowerOff, RotateCcw, Ban, Copy, Search, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,8 +84,12 @@ export default function ProjectDetailPage() {
   const [showCodeDetailDialog, setShowCodeDetailDialog] = useState(false);
   const [codeDetailLoading, setCodeDetailLoading] = useState(false);
   const [codeDetail, setCodeDetail] = useState<any | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedCodes, setCopiedCodes] = useState<Set<string>>(new Set()); // 激活码列表中的复制状态
   const [sortBy, setSortBy] = useState<'created_at' | 'verified_at'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [generateLoading, setGenerateLoading] = useState(false);
 
   const pageSize = DEFAULT_PAGE_SIZE;
 
@@ -230,13 +234,15 @@ export default function ProjectDetailPage() {
     const count = parseInt(formData.get('count') as string);
     const expiresAt = formData.get('expires_at') as string;
 
+    setGenerateLoading(true);
     try {
-      await codesApi.generate(projectId, {
+      const generatedCodes = await codesApi.generate(projectId, {
         count,
         expires_at: expiresAt ? dateTimeLocalToTimestamp(expiresAt) : null,
       });
-      // PRD：批量生成成功文案
-      toast.success(`批量生成成功：共生成 ${count} 个激活码`);
+      // PRD：批量生成成功文案，使用实际生成的数量
+      const actualCount = generatedCodes?.length || count;
+      toast.success(`批量生成成功：共生成 ${actualCount} 个激活码`);
       setShowGenerateDialog(false);
       // 操作成功后，按 PRD 要求重新拉取激活码列表（局部刷新）
       await loadCodes();
@@ -247,6 +253,8 @@ export default function ProjectDetailPage() {
       } else {
         toast.error(`批量生成失败：${msg}`);
       }
+    } finally {
+      setGenerateLoading(false);
     }
   };
 
@@ -270,7 +278,10 @@ export default function ProjectDetailPage() {
   const handleReactivate = async (codeId: string) => {
     try {
       await codesApi.reactivate(codeId);
-      toast.success('重新激活成功');
+      // PRD：激活成功文案
+      toast.success('激活成功');
+      setShowReactivateDialog(false);
+      setSelectedCodeId(null);
       // 重新拉取激活码列表，确保状态/统计同步
       await loadCodes();
     } catch (error: any) {
@@ -291,7 +302,10 @@ export default function ProjectDetailPage() {
       const detail = await codesApi.get(projectId, codeId);
       setCodeDetail(detail);
     } catch (error: any) {
-      toast.error(getErrorMessage(error, '加载激活码详情失败，请稍后重试'));
+      // PRD 4.5.1：失败提示格式：加载激活码详情失败：{detail || "请稍后重试"}
+      const msg = getErrorMessage(error, '请稍后重试');
+      const errorMsg = msg.startsWith('加载激活码详情失败：') ? msg : `加载激活码详情失败：${msg}`;
+      toast.error(errorMsg);
       setShowCodeDetailDialog(false);
     } finally {
       setCodeDetailLoading(false);
@@ -326,8 +340,9 @@ export default function ProjectDetailPage() {
         is_disabled,
         is_expired,
       });
-      // PRD：批量禁用成功使用后端返回 message（已包含数量），否则使用统一文案
-      toast.success(res.message || '批量禁用成功');
+      // PRD：批量禁用成功文案格式：批量禁用成功：已禁用 {disabled_count} 个激活码
+      toast.success(`批量禁用成功：已禁用 ${res.disabled_count} 个激活码`);
+      setShowBatchDisableDialog(false);
       // 批量操作后，直接按当前筛选条件重新拉取列表
       await loadCodes();
     } catch (error: any) {
@@ -469,7 +484,7 @@ export default function ProjectDetailPage() {
       {/* 项目信息卡片 */}
       <Card className="mb-6">
         <CardHeader className="py-4 flex flex-row items-center justify-between">
-          <CardTitle className="text-xl">项目基本信息</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground/80">基本信息</CardTitle>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -580,7 +595,7 @@ export default function ProjectDetailPage() {
       {/* 激活码管理区域 */}
       <Card>
         <CardHeader className="py-4 flex flex-row items-center justify-between">
-          <CardTitle className="text-xl">激活码管理</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground/80">激活码管理</CardTitle>
           <div className="flex items-center gap-2">
             <Button
               onClick={() => setShowGenerateDialog(true)}
@@ -610,7 +625,7 @@ export default function ProjectDetailPage() {
                     setPage(1);
                   }}
                   placeholder="搜索激活码..."
-                  className="pl-9"
+                  className="pl-9 placeholder:text-muted-foreground/60"
                 />
               </div>
             </div>
@@ -637,10 +652,10 @@ export default function ProjectDetailPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[140px]">ID</TableHead>
-                  <TableHead className="w-[240px]">激活码</TableHead>
+                  <TableHead className="w-[120px]">ID</TableHead>
+                  <TableHead className="w-[200px]">激活码</TableHead>
                   <TableHead className="w-[120px]">状态</TableHead>
-                  <TableHead className="w-[180px]">
+                  <TableHead className="w-[150px]">
                     <button
                       type="button"
                       className="flex items-center gap-1 text-sm font-medium text-foreground"
@@ -653,8 +668,8 @@ export default function ProjectDetailPage() {
                       {sortBy === 'verified_at' ? (sortOrder === 'desc' ? '↓' : '↑') : ''}
                     </button>
                   </TableHead>
-                  <TableHead className="w-[160px]">核销用户</TableHead>
-                  <TableHead className="w-[180px]">
+                  <TableHead className="w-[150px]">核销用户</TableHead>
+                  <TableHead className="w-[150px]">
                     <button
                       type="button"
                       className="flex items-center gap-1 text-sm font-medium text-foreground"
@@ -667,7 +682,7 @@ export default function ProjectDetailPage() {
                       {sortBy === 'created_at' ? (sortOrder === 'desc' ? '↓' : '↑') : ''}
                     </button>
                   </TableHead>
-                  <TableHead className="w-[240px] text-right">操作</TableHead>
+                  <TableHead className="w-[200px]">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -690,10 +705,11 @@ export default function ProjectDetailPage() {
                       <TableCell className="font-mono">
                         <button
                           type="button"
-                          className="inline-flex items-center gap-2 text-primary hover:text-primary/80"
+                          className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-all duration-200"
                           onClick={async () => {
                             try {
                               await navigator.clipboard.writeText(code.code);
+                              setCopiedCodes((prev) => new Set(prev).add(code.id));
                               toast.success('已复制');
                             } catch {
                               toast.error('复制失败，请手动复制');
@@ -702,7 +718,11 @@ export default function ProjectDetailPage() {
                           title="点击复制"
                         >
                           {code.code}
-                          <Copy className="h-4 w-4" />
+                          {copiedCodes.has(code.id) ? (
+                            <Check className="h-4 w-4 text-green-600 scale-110" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
                         </button>
                       </TableCell>
                       <TableCell>{getCodeStatusBadge(code)}</TableCell>
@@ -711,12 +731,12 @@ export default function ProjectDetailPage() {
                       </TableCell>
                       <TableCell className="text-foreground">{code.verified_by || '-'}</TableCell>
                       <TableCell className="text-foreground">{timestampToLocal(code.created_at)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="inline-flex items-center justify-end gap-2">
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center flex-wrap gap-x-3 gap-y-2">
                           <Button
                             variant="ghost"
-                            size="sm"
                             onClick={() => handleViewCodeDetail(code.id)}
+                            className="h-8 px-2 gap-1 text-sm leading-none"
                           >
                             查看详情
                           </Button>
@@ -724,9 +744,9 @@ export default function ProjectDetailPage() {
                           {!code.status && !code.is_disabled && !code.is_expired && (
                             <Button
                               variant="ghost"
-                              size="sm"
                               onClick={() => handleToggleCodeStatus(code.id, code.is_disabled)}
                               title="禁用"
+                              className="h-8 px-2 gap-1 text-sm leading-none"
                             >
                               <PowerOff className="h-4 w-4" />
                               禁用
@@ -736,9 +756,9 @@ export default function ProjectDetailPage() {
                           {code.is_disabled && !code.is_expired && (
                             <Button
                               variant="ghost"
-                              size="sm"
                               onClick={() => handleToggleCodeStatus(code.id, code.is_disabled)}
                               title="启用"
+                              className="h-8 px-2 gap-1 text-sm leading-none"
                             >
                               <Power className="h-4 w-4" />
                               启用
@@ -747,25 +767,24 @@ export default function ProjectDetailPage() {
                           {code.status && !code.is_disabled && !code.is_expired && (
                             <Button
                               variant="ghost"
-                              size="sm"
                               onClick={() => {
                                 setSelectedCodeId(code.id);
                                 setShowReactivateDialog(true);
                               }}
-                              title="重新激活"
+                              title="激活"
+                              className="h-8 px-2 gap-1 text-sm leading-none"
                             >
                               <RotateCcw className="h-4 w-4" />
-                              重新激活
+                              激活
                             </Button>
                           )}
                           <Button
                             variant="ghost"
-                            size="sm"
                             onClick={() => {
                               setSelectedCodeId(code.id);
                               setShowDeleteCodeDialog(true);
                             }}
-                            className="text-destructive hover:text-destructive/80"
+                            className="h-8 px-2 gap-1 text-sm leading-none text-destructive hover:text-destructive/80"
                           >
                             <Trash2 className="h-4 w-4" />
                             删除
@@ -817,7 +836,7 @@ export default function ProjectDetailPage() {
 
       {/* 批量生成弹框 */}
       <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>批量生成激活码</DialogTitle>
           </DialogHeader>
@@ -834,11 +853,23 @@ export default function ProjectDetailPage() {
               <p className="text-sm text-muted-foreground">为空则使用项目有效期（如有）。</p>
             </div>
             <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setShowGenerateDialog(false)}>
+              <Button 
+                type="button" 
+                variant="secondary" 
+                onClick={() => setShowGenerateDialog(false)}
+                disabled={generateLoading}
+              >
                 取消
               </Button>
-              <Button type="submit">
-                生成
+              <Button type="submit" disabled={generateLoading}>
+                {generateLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    生成中...
+                  </>
+                ) : (
+                  '生成'
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -872,7 +903,7 @@ export default function ProjectDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 重新激活确认 */}
+      {/* 激活确认 */}
       <AlertDialog
         open={showReactivateDialog}
         onOpenChange={(open) => {
@@ -882,7 +913,7 @@ export default function ProjectDetailPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认重新激活</AlertDialogTitle>
+            <AlertDialogTitle>确认激活</AlertDialogTitle>
             <AlertDialogDescription>
               该激活码将从“已使用”恢复为“未使用”，核销时间与核销用户会被清空。
             </AlertDialogDescription>
@@ -945,7 +976,7 @@ export default function ProjectDetailPage() {
 
       {/* 编辑项目弹框 */}
       <Dialog open={showEditProjectDialog} onOpenChange={setShowEditProjectDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>编辑项目</DialogTitle>
           </DialogHeader>
@@ -954,11 +985,11 @@ export default function ProjectDetailPage() {
               <Label htmlFor="proj_name">
                 项目名称 <span className="text-destructive">*</span>
               </Label>
-              <Input id="proj_name" name="name" required maxLength={100} defaultValue={project.name} />
+              <Input id="proj_name" name="name" required maxLength={100} defaultValue={project.name} className="placeholder:text-muted-foreground/60" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="proj_desc">项目描述</Label>
-              <Textarea id="proj_desc" name="description" rows={4} maxLength={500} defaultValue={project.description || ''} />
+              <Textarea id="proj_desc" name="description" rows={4} maxLength={500} defaultValue={project.description || ''} className="placeholder:text-muted-foreground/60" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="proj_expires">有效期</Label>
@@ -994,43 +1025,100 @@ export default function ProjectDetailPage() {
           if (!open) {
             setSelectedCodeId(null);
             setCodeDetail(null);
+            setCopiedId(false);
+            setCopiedCode(false);
           }
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>激活码详情</DialogTitle>
           </DialogHeader>
           {codeDetailLoading ? (
             <div className="text-muted-foreground">加载中...</div>
           ) : codeDetail ? (
-            <div className="space-y-3 text-sm text-foreground">
-              <div className="grid grid-cols-2 gap-2">
-                <span className="text-muted-foreground">ID</span>
-                <span className="font-mono break-all">{codeDetail.id}</span>
+            <div className="space-y-4 text-sm text-foreground">
+              {/* ID */}
+              <div className="flex items-center gap-x-4">
+                <span className="text-muted-foreground w-24 text-right flex-shrink-0">ID</span>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="font-mono truncate" title={codeDetail.id}>
+                    {codeDetail.id}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(codeDetail.id);
+                        setCopiedId(true);
+                        toast.success('已复制');
+                      } catch {
+                        toast.error('复制失败，请手动复制');
+                      }
+                    }}
+                    className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-all duration-200"
+                    title="复制ID"
+                  >
+                    {copiedId ? (
+                      <Check className="h-4 w-4 text-green-600 scale-110" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <span className="text-muted-foreground">激活码</span>
-                <span className="font-mono break-all">{codeDetail.code}</span>
+              {/* 激活码 */}
+              <div className="flex items-center gap-x-4">
+                <span className="text-muted-foreground w-24 text-right flex-shrink-0">激活码</span>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="font-mono truncate" title={codeDetail.code}>
+                    {codeDetail.code}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(codeDetail.code);
+                        setCopiedCode(true);
+                        toast.success('已复制');
+                      } catch {
+                        toast.error('复制失败，请手动复制');
+                      }
+                    }}
+                    className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-all duration-200"
+                    title="复制激活码"
+                  >
+                    {copiedCode ? (
+                      <Check className="h-4 w-4 text-green-600 scale-110" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <span className="text-muted-foreground">状态</span>
+              {/* 状态 */}
+              <div className="flex items-center gap-x-4">
+                <span className="text-muted-foreground w-24 text-right flex-shrink-0">状态</span>
                 <span>{getCodeStatusBadge(codeDetail)}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <span className="text-muted-foreground">核销时间</span>
+              {/* 核销时间 */}
+              <div className="flex items-center gap-x-4">
+                <span className="text-muted-foreground w-24 text-right flex-shrink-0">核销时间</span>
                 <span>{codeDetail.verified_at ? timestampToLocal(codeDetail.verified_at) : '-'}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <span className="text-muted-foreground">核销用户</span>
+              {/* 核销用户 */}
+              <div className="flex items-center gap-x-4">
+                <span className="text-muted-foreground w-24 text-right flex-shrink-0">核销用户</span>
                 <span>{codeDetail.verified_by || '-'}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <span className="text-muted-foreground">创建时间</span>
+              {/* 创建时间 */}
+              <div className="flex items-center gap-x-4">
+                <span className="text-muted-foreground w-24 text-right flex-shrink-0">创建时间</span>
                 <span>{timestampToLocal(codeDetail.created_at)}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <span className="text-muted-foreground">过期时间</span>
+              {/* 过期时间 */}
+              <div className="flex items-center gap-x-4">
+                <span className="text-muted-foreground w-24 text-right flex-shrink-0">过期时间</span>
                 <span>{codeDetail.expires_at ? timestampToLocal(codeDetail.expires_at) : '未设置'}</span>
               </div>
             </div>

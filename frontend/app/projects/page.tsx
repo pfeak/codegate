@@ -293,6 +293,7 @@ export default function ProjectsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="搜索项目名称..."
+                className="placeholder:text-muted-foreground/60"
               />
             </div>
             <div className="sm:w-48">
@@ -335,13 +336,13 @@ export default function ProjectsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[140px]">ID</TableHead>
-                  <TableHead className="w-[220px]">名称</TableHead>
-                  <TableHead>描述</TableHead>
-                  <TableHead className="w-[160px]">创建时间</TableHead>
-                  <TableHead className="w-[160px]">有效期</TableHead>
-                  <TableHead className="w-[110px]">状态</TableHead>
-                  <TableHead className="w-[240px] text-right">操作</TableHead>
+                  <TableHead className="w-[120px]">ID</TableHead>
+                  <TableHead className="w-[200px]">名称</TableHead>
+                  <TableHead className="w-[300px]">描述</TableHead>
+                  <TableHead className="w-[150px]">创建时间</TableHead>
+                  <TableHead className="w-[150px]">有效期</TableHead>
+                  <TableHead className="w-[100px]">状态</TableHead>
+                  <TableHead className="w-[200px]">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -386,20 +387,20 @@ export default function ProjectsPage() {
                           <Badge variant="secondary">禁用</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="inline-flex items-center justify-end gap-2">
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center flex-wrap gap-x-3 gap-y-2">
                           <Button
                             variant="ghost"
-                            size="sm"
                             onClick={() => openEditModal(project.id)}
+                            className="h-8 px-2 gap-1 text-sm leading-none"
                           >
                             <Edit className="h-4 w-4" />
                             编辑
                           </Button>
                           <Button
                             variant="ghost"
-                            size="sm"
                             onClick={() => handleToggleStatus(project.id, project.status)}
+                            className="h-8 px-2 gap-1 text-sm leading-none"
                           >
                             {project.status ? (
                               <>
@@ -415,12 +416,11 @@ export default function ProjectsPage() {
                           </Button>
                           <Button
                             variant="ghost"
-                            size="sm"
                             onClick={() => {
                               setDeletingProjectId(project.id);
                               setShowDeleteModal(true);
                             }}
-                            className="text-destructive hover:text-destructive/80"
+                            className="h-8 px-2 gap-1 text-sm leading-none text-destructive hover:text-destructive/80"
                           >
                             <Trash2 className="h-4 w-4" />
                             删除
@@ -503,7 +503,7 @@ export default function ProjectsPage() {
 
       {/* 创建项目弹框 */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>创建项目</DialogTitle>
           </DialogHeader>
@@ -512,11 +512,11 @@ export default function ProjectsPage() {
               <Label htmlFor="create_name">
                 项目名称 <span className="text-destructive">*</span>
               </Label>
-              <Input id="create_name" type="text" name="name" required maxLength={100} />
+              <Input id="create_name" type="text" name="name" required maxLength={100} className="placeholder:text-muted-foreground/60" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="create_description">项目描述</Label>
-              <Textarea id="create_description" name="description" rows={4} maxLength={500} />
+              <Textarea id="create_description" name="description" rows={4} maxLength={500} className="placeholder:text-muted-foreground/60" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="create_expires_at">有效期</Label>
@@ -542,7 +542,7 @@ export default function ProjectsPage() {
           if (!open) setEditingProject(null);
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>编辑项目</DialogTitle>
           </DialogHeader>
@@ -559,6 +559,7 @@ export default function ProjectsPage() {
                   defaultValue={editingProject.name}
                   required
                   maxLength={100}
+                  className="placeholder:text-muted-foreground/60"
                 />
               </div>
               <div className="space-y-2">
@@ -569,6 +570,7 @@ export default function ProjectsPage() {
                   rows={4}
                   maxLength={500}
                   defaultValue={editingProject.description || ''}
+                  className="placeholder:text-muted-foreground/60"
                 />
               </div>
               <div className="space-y-2">

@@ -123,6 +123,7 @@ export default function ChangePasswordPage() {
                   required
                   placeholder="请输入当前密码"
                   autoComplete="current-password"
+                  className="placeholder:text-muted-foreground/60"
                 />
               </div>
 
@@ -138,6 +139,7 @@ export default function ChangePasswordPage() {
                   required
                   placeholder="至少8位，包含字母和数字"
                   autoComplete="new-password"
+                  className="placeholder:text-muted-foreground/60"
                 />
                 <p className="text-sm text-muted-foreground">至少8位，包含字母和数字</p>
               </div>
@@ -154,6 +156,7 @@ export default function ChangePasswordPage() {
                   required
                   placeholder="请再次输入新密码"
                   autoComplete="new-password"
+                  className="placeholder:text-muted-foreground/60"
                 />
               </div>
 
