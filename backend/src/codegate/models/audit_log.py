@@ -31,7 +31,7 @@ class AuditLog(Base):
     actor_id = Column(String(32), nullable=True, index=True, comment="操作人ID（管理员ID，可为空）")
     actor_type = Column(String(20), nullable=False, default="admin", comment="操作人类型（admin/system/external）")
     resource_type = Column(String(50), nullable=True, index=True, comment="资源类型（project/code/admin/session等）")
-    resource_id = Column(String(32), nullable=True, index=True, comment="资源ID（如项目ID、激活码ID，可为空）")
+    resource_id = Column(String(100), nullable=True, index=True, comment="资源ID（如项目ID、激活码ID、session ID等，可为空）")
     result = Column(String(20), nullable=False, default="success", comment="操作结果（success/failed）")
     ip_address = Column(String(45), nullable=True, comment="客户端IP地址（IPv4/IPv6）")
     user_agent = Column(Text, nullable=True, comment="用户代理字符串")

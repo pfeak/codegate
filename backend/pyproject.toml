@@ -33,6 +33,8 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "bcrypt>=4.0.0",
     "redis>=5.0.0",
+    # 数据库驱动
+    "psycopg2-binary>=2.9.0",  # PostgreSQL 驱动
 ]
 
 [project.urls]

@@ -1,6 +1,8 @@
 """
 数据库连接和会话管理
 
+支持 SQLite 和 PostgreSQL 两种数据库
+
 Copyright 2026 pfeak
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +22,7 @@ import os
 import logging
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Optional
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 
@@ -27,11 +30,52 @@ from .config import settings
 
 logger = logging.getLogger(__name__)
 
-# 创建数据库引擎
-# SQLite 使用 WAL 模式支持并发读写
-database_url = settings.DATABASE_URL
+# PostgreSQL 驱动（可选）
+try:
+    import psycopg2
+    _postgresql_available = True
+except ImportError:
+    _postgresql_available = False
+    logger.warning("psycopg2 未安装，PostgreSQL 支持可能受限")
 
-if database_url.startswith("sqlite"):
+
+def _build_database_url() -> str:
+    """根据配置构建数据库连接 URL"""
+    db_type = settings.DATABASE_TYPE.lower()
+
+    if db_type == "sqlite":
+        return settings.DATABASE_URL
+
+    elif db_type == "postgresql":
+        # 如果提供了完整的 URL，直接使用
+        if settings.POSTGRESQL_URL:
+            return settings.POSTGRESQL_URL
+
+        # 否则从各个配置项构建
+        user = settings.POSTGRESQL_USER
+        password = settings.POSTGRESQL_PASSWORD
+        host = settings.POSTGRESQL_HOST
+        port = settings.POSTGRESQL_PORT
+        db = settings.POSTGRESQL_DB
+
+        if password:
+            return f"postgresql://{user}:{password}@{host}:{port}/{db}"
+        else:
+            return f"postgresql://{user}@{host}:{port}/{db}"
+
+    else:
+        raise ValueError(f"不支持的数据库类型: {db_type}，支持的类型: sqlite, postgresql")
+
+
+# 创建数据库引擎和连接
+database_url = _build_database_url()
+db_type = settings.DATABASE_TYPE.lower()
+
+# SQLAlchemy 引擎（用于 SQLite 和 PostgreSQL）
+engine = None
+SessionLocal = None
+
+if db_type == "sqlite":
     # SQLite 配置
     # 确保数据库目录存在
     db_path = Path(database_url.replace("sqlite:///", ""))
@@ -58,15 +102,32 @@ if database_url.startswith("sqlite"):
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.close()
-else:
+
+    # 创建会话工厂
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    logger.info(f"已连接到 SQLite 数据库: {database_url}")
+
+elif db_type == "postgresql":
+    # PostgreSQL 配置
+    # 确保使用 psycopg2 驱动
+    if not database_url.startswith("postgresql+psycopg2"):
+        # 如果 URL 中没有指定驱动，添加 psycopg2
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
     engine = create_engine(
         database_url,
         echo=settings.DATABASE_ECHO,
         pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
     )
 
-# 创建会话工厂
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    # 创建会话工厂
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    logger.info(f"已连接到 PostgreSQL 数据库: {settings.POSTGRESQL_HOST}:{settings.POSTGRESQL_PORT}/{settings.POSTGRESQL_DB}")
+
+else:
+    raise ValueError(f"不支持的数据库类型: {db_type}")
 
 
 # 数据库基类
@@ -80,6 +141,8 @@ class Base(DeclarativeBase):
 def get_db() -> Session:
     """
     获取数据库会话（依赖注入）
+
+    返回 SQLAlchemy Session
 
     Yields:
         Session: 数据库会话
@@ -95,6 +158,8 @@ def get_db() -> Session:
 def get_db_context():
     """
     获取数据库会话上下文管理器
+
+    返回 SQLAlchemy Session（自动提交/回滚）
 
     Yields:
         Session: 数据库会话
@@ -112,6 +177,7 @@ def get_db_context():
 
 def init_db():
     """初始化数据库（创建所有表）"""
+    # 使用 SQLAlchemy 创建表
     # 导入所有模型以确保表被注册
     from .models import Project, InvitationCode, VerificationLog, Admin, AuditLog
     from .services.auth import AuthService
@@ -142,3 +208,4 @@ def init_db():
 def drop_db():
     """删除所有表（谨慎使用）"""
     Base.metadata.drop_all(bind=engine)
+    logger.warning("已删除所有数据库表")

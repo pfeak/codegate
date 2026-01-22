@@ -66,15 +66,15 @@ class InvitationCode(Base):
         Index("idx_code_expires_at", "expires_at"),
         # 状态互斥约束：已使用/已禁用/已过期不能同时出现
         CheckConstraint(
-            "NOT (status = 1 AND is_disabled = 1)",
+            "NOT (status IS TRUE AND is_disabled IS TRUE)",
             name="chk_code_not_used_and_disabled",
         ),
         CheckConstraint(
-            "NOT (status = 1 AND is_expired = 1)",
+            "NOT (status IS TRUE AND is_expired IS TRUE)",
             name="chk_code_not_used_and_expired",
         ),
         CheckConstraint(
-            "NOT (is_disabled = 1 AND is_expired = 1)",
+            "NOT (is_disabled IS TRUE AND is_expired IS TRUE)",
             name="chk_code_not_disabled_and_expired",
         ),
     )

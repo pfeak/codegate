@@ -30,7 +30,22 @@ class Settings(BaseSettings):
     """应用配置"""
 
     # 数据库配置
+    # 数据库类型：sqlite | postgresql
+    DATABASE_TYPE: str = "sqlite"
+
+    # SQLite 配置（当 DATABASE_TYPE=sqlite 时使用）
     DATABASE_URL: str = "sqlite:///./codegate.db"
+
+    # PostgreSQL 配置（当 DATABASE_TYPE=postgresql 时使用）
+    # 格式：postgresql://user:password@host:port/dbname
+    # 或：postgresql+psycopg2://user:password@host:port/dbname
+    POSTGRESQL_HOST: str = "localhost"
+    POSTGRESQL_PORT: int = 5432
+    POSTGRESQL_USER: str = "postgres"
+    POSTGRESQL_PASSWORD: str = ""
+    POSTGRESQL_DB: str = "codegate"
+    POSTGRESQL_URL: Optional[str] = None  # 如果设置了此值，将优先使用此 URL
+
     DATABASE_ECHO: bool = False
 
     # 应用配置
