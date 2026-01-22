@@ -854,11 +854,29 @@ export default function ProjectDetailPage() {
               <Label htmlFor="gen_count">
                 生成数量 <span className="text-destructive">*</span>
               </Label>
-              <Input id="gen_count" type="number" name="count" required min="1" max="10000" defaultValue="10" />
+              <Input 
+                id="gen_count" 
+                type="number" 
+                name="count" 
+                required 
+                min="1" 
+                max="10000" 
+                defaultValue="10" 
+                className="placeholder:text-muted-foreground/60"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="gen_expires_at">过期时间（可选）</Label>
-              <Input id="gen_expires_at" type="datetime-local" name="expires_at" />
+              <div className="relative inline-flex w-full max-w-sm">
+                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                <Input 
+                  id="gen_expires_at" 
+                  type="datetime-local" 
+                  name="expires_at" 
+                  min={new Date().toISOString().slice(0, 16)}
+                  className="pl-10 pr-3 w-auto min-w-[240px] placeholder:text-muted-foreground/60"
+                />
+              </div>
               <p className="text-sm text-muted-foreground">为空则使用项目有效期（如有）。</p>
             </div>
             <DialogFooter>
