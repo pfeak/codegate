@@ -66,9 +66,10 @@ class Settings(BaseSettings):
     # 必须显式列出允许的前端来源（origin），否则浏览器会在携带 Cookie 的请求上直接拦截。
     # 默认开发环境允许本机前端：
     # - http://localhost:3000  （Next.js dev server）
+    # - http://127.0.0.1:3000   （WSL2/Windows 访问场景）
     # 如需新增来源，请通过环境变量覆盖 CORS_ORIGINS，例如：
     #   CORS_ORIGINS='["http://localhost:3000","http://127.0.0.1:3000"]'
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_PER_MINUTE: int = 60
 

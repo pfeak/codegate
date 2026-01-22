@@ -87,9 +87,7 @@ async def startup_event():
 async def index():
     """API 首页"""
     return HTMLResponse(
-        "<h1>CodeGate API</h1>"
-        "<p>请访问 <a href='/docs'>/docs</a> 查看 API 文档</p>"
-        "<p>前端应用请访问前端服务器地址</p>"
+        ""
     )
 
 
