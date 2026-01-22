@@ -23,7 +23,7 @@ from pathlib import Path
 
 from .config import settings
 from .database import init_db
-from .api import projects, codes, verify, auth, dashboard, verification_logs, audit_logs
+from .api import projects, codes, verify, auth, dashboard, verification_logs, audit_logs, api_keys
 
 
 def configure_logging() -> None:
@@ -72,6 +72,7 @@ app.include_router(codes.router_standalone)  # 独立的激活码API路由
 app.include_router(verify.router)
 app.include_router(verification_logs.router)
 app.include_router(audit_logs.router)
+app.include_router(api_keys.router)
 
 
 @app.on_event("startup")

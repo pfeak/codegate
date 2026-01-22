@@ -13,7 +13,7 @@ function getApiBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
-  
+
   // 在客户端运行时，根据当前页面的 hostname 自动匹配
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
@@ -25,7 +25,7 @@ function getApiBaseUrl(): string {
     // 默认使用 localhost
     return `http://localhost:${port}`;
   }
-  
+
   // 服务端渲染时使用默认值
   return "http://localhost:8000";
 }
@@ -241,6 +241,52 @@ export const projectsApi = {
 
   delete: (id: string) =>
     apiRequest<void>(`/api/projects/${id}`, { method: "DELETE" }),
+};
+
+// ------------------------
+// API Keys (Project scoped)
+// ------------------------
+
+export interface ApiKeyItem {
+  id: string;
+  project_id: string;
+  api_key: string;
+  name: string | null;
+  is_active: boolean;
+  last_used_at: number | null;
+  created_at: number;
+  created_by: string;
+}
+
+export interface ApiKeyWithSecret extends ApiKeyItem {
+  secret: string;
+}
+
+export interface ApiKeyListResponse {
+  items: ApiKeyItem[];
+  total: number;
+}
+
+export const apiKeysApi = {
+  list: (projectId: string) =>
+    apiRequest<ApiKeyListResponse>(`/api/projects/${projectId}/api-keys`),
+
+  generateOrRefresh: (projectId: string, data: { name?: string | null }) =>
+    apiRequest<ApiKeyWithSecret>(`/api/projects/${projectId}/api-keys`, {
+      method: "POST",
+      body: JSON.stringify({ project_id: projectId, ...data }),
+    }),
+
+  toggle: (apiKeyId: string, isActive: boolean) =>
+    apiRequest<ApiKeyItem>(`/api/api-keys/${apiKeyId}`, {
+      method: "PUT",
+      body: JSON.stringify({ is_active: isActive }),
+    }),
+
+  delete: (apiKeyId: string) =>
+    apiRequest<{ success: boolean; message: string }>(`/api/api-keys/${apiKeyId}`, {
+      method: "DELETE",
+    }),
 };
 
 // ------------------------

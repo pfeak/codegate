@@ -179,7 +179,7 @@ def init_db():
     """初始化数据库（创建所有表）"""
     # 使用 SQLAlchemy 创建表
     # 导入所有模型以确保表被注册
-    from .models import Project, InvitationCode, VerificationLog, Admin, AuditLog
+    from .models import Project, InvitationCode, VerificationLog, Admin, AuditLog, ApiKey
     from .services.auth import AuthService
     from .services.auth.auth_repository import AuthRepository
     from sqlalchemy import select

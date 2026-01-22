@@ -20,5 +20,6 @@ from .invitation_code import InvitationCode
 from .verification_log import VerificationLog
 from .admin import Admin
 from .audit_log import AuditLog
+from .api_key import ApiKey
 
-__all__ = ["Project", "InvitationCode", "VerificationLog", "Admin", "AuditLog"]
+__all__ = ["Project", "InvitationCode", "VerificationLog", "Admin", "AuditLog", "ApiKey"]
