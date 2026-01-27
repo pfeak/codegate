@@ -1,4 +1,4 @@
-# Python SDK（调用方使用指南）
+# Python SDK（推荐）
 
 本文档面向 **Python 调用方**：说明如何安装并使用 CodeGate Python SDK 完成常见任务。
 
