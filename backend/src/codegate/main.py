@@ -24,6 +24,7 @@ from pathlib import Path
 from .config import settings
 from .database import init_db
 from .api import projects, codes, verify, auth, dashboard, verification_logs, audit_logs, api_keys, docs
+from .api.sdk import router as sdk_api_router
 
 
 def configure_logging() -> None:
@@ -74,6 +75,7 @@ app.include_router(verification_logs.router)
 app.include_router(audit_logs.router)
 app.include_router(api_keys.router)
 app.include_router(docs.router)
+app.include_router(sdk_api_router)  # SDK API 路由
 
 
 @app.on_event("startup")

@@ -11,6 +11,80 @@
 
 ---
 
+## 0. SDK 包结构
+
+### 0.1 目录结构
+
+CodeGate SDK 采用多语言 SDK 目录结构，各语言 SDK 位于独立的目录中：
+
+```
+codegate/
+├── sdk/                      # SDK 根目录
+│   ├── python/               # Python SDK（已完成）
+│   │   ├── src/
+│   │   │   └── codegate_sdk/ # SDK 包源码
+│   │   │       ├── __init__.py
+│   │   │       ├── signature.py  # 签名计算模块
+│   │   │       └── client.py      # 客户端实现
+│   │   ├── tests/            # 测试文件
+│   │   ├── pyproject.toml    # Python 包配置（独立构建）
+│   │   └── README.md         # Python SDK 文档
+│   ├── javascript/           # JavaScript/TypeScript SDK（计划中）
+│   ├── go/                   # Go SDK（计划中）
+│   ├── java/                 # Java SDK（计划中）
+│   └── README.md             # SDK 总览文档
+└── backend/                  # 后端服务（独立项目）
+    └── pyproject.toml         # 后端项目配置（整包嵌入位置）
+```
+
+### 0.2 构建和安装
+
+#### Python SDK
+
+Python SDK 使用独立的 `pyproject.toml` 配置，可以通过 `uv build` 构建：
+
+```bash
+# 进入 Python SDK 目录
+cd sdk/python
+
+# 构建包
+uv build
+
+# 构建产物位于 dist/ 目录
+# - codegate-sdk-0.1.0-py3-none-any.whl
+# - codegate-sdk-0.1.0.tar.gz
+```
+
+**安装方式**：
+
+```bash
+# 从本地构建的 wheel 文件安装
+pip install dist/codegate-sdk-0.1.0-py3-none-any.whl
+
+# 或使用 uv
+uv pip install dist/codegate-sdk-0.1.0-py3-none-any.whl
+```
+
+**包信息**：
+- **包名**：`codegate-sdk`
+- **版本**：`0.1.0`
+- **Python 版本要求**：`>=3.10`
+- **依赖**：`requests>=2.28.0`
+
+#### 其他语言 SDK
+
+其他语言的 SDK 将在未来版本中提供，目录结构已预留。
+
+### 0.3 设计说明
+
+**重要**：
+- SDK 包与后端服务包（`backend/pyproject.toml`）是**完全独立**的
+- 后端 `pyproject.toml` 用于整包嵌入场景（将来可能将后端作为库嵌入其他项目）
+- SDK 包仅包含客户端代码，不包含服务端代码
+- 每个语言的 SDK 都有独立的构建配置和版本管理
+
+---
+
 ## 1. 概述
 
 ### 1.1 设计目标

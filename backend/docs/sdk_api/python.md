@@ -1,81 +1,119 @@
 # Python SDK 实现文档
 
-> **文档职责**：此文档提供 CodeGate SDK API 的 Python 实现指南，包括签名计算、完整 SDK 客户端实现和使用示例。
+> **文档职责**：此文档提供 CodeGate SDK API 的 Python 实现指南，包括接口说明、使用示例和最佳实践。具体实现代码请参考 SDK 源码。
 >
 > **相关文档**：
 >
 > - 设计使用文档请参考 [`README.md`](./README.md)
+> - SDK 源码位置：`codegate/sdk/python/src/codegate_sdk/`
 
 ---
 
-## 1. 签名计算实现
+## 0. SDK 包结构
 
-### 1.1 核心签名函数
+### 0.1 目录结构
+
+CodeGate SDK 采用多语言 SDK 目录结构，Python SDK 位于独立的目录中：
+
+```
+codegate/
+├── sdk/                      # SDK 根目录
+│   ├── python/               # Python SDK
+│   │   ├── src/
+│   │   │   └── codegate_sdk/ # SDK 包源码
+│   │   │       ├── __init__.py
+│   │   │       ├── signature.py  # 签名计算模块
+│   │   │       └── client.py      # 客户端实现
+│   │   ├── tests/            # 测试文件
+│   │   ├── examples/         # 使用示例
+│   │   ├── pyproject.toml    # Python 包配置（独立构建）
+│   │   └── README.md         # Python SDK 文档
+│   ├── javascript/           # JavaScript/TypeScript SDK（计划中）
+│   ├── go/                   # Go SDK（计划中）
+│   ├── java/                 # Java SDK（计划中）
+│   └── README.md             # SDK 总览文档
+└── backend/                  # 后端服务（独立项目）
+    └── pyproject.toml        # 后端项目配置（整包嵌入位置）
+```
+
+### 0.2 构建和安装
+
+Python SDK 使用独立的 `pyproject.toml` 配置，可以通过 `uv build` 构建：
+
+```bash
+# 进入 Python SDK 目录
+cd sdk/python
+
+# 构建包
+uv build
+
+# 构建产物位于 dist/ 目录
+# - codegate-sdk-0.1.0-py3-none-any.whl
+# - codegate-sdk-0.1.0.tar.gz
+```
+
+**安装方式**：
+
+```bash
+# 从构建的 wheel 文件安装
+pip install dist/codegate-sdk-0.1.0-py3-none-any.whl
+
+# 或使用 uv
+uv pip install dist/codegate-sdk-0.1.0-py3-none-any.whl
+```
+
+**注意**：
+- SDK 包与后端服务包（`backend/pyproject.toml`）是独立的
+- 后端 `pyproject.toml` 用于整包嵌入场景（将来可能将后端作为库嵌入其他项目）
+- SDK 包仅包含客户端代码，不包含服务端代码
+
+### 0.3 包名和版本
+
+- **包名**：`codegate-sdk`
+- **版本**：`0.1.0`
+- **Python 版本要求**：`>=3.10`
+
+---
+
+## 1. 签名计算
+
+### 1.1 签名函数接口
+
+SDK 提供 `generate_signature` 函数用于生成 HMAC-SHA256 签名：
 
 ```python
-import hmac
-import hashlib
-import time
-import urllib.parse
-from typing import Dict, Optional
+from codegate_sdk import generate_signature
 
-# 空字符串的 SHA256 哈希值（常量）
+signature = generate_signature(
+    method: str,              # HTTP 方法（大写），如 'GET', 'POST'
+    path: str,                 # 请求路径（不含查询参数）
+    query_params: Optional[Dict[str, str]] = None,  # 查询参数字典（可选）
+    body: Optional[str] = None,  # 请求体字符串（可选）
+    timestamp: int,           # Unix 时间戳（秒级）
+    secret: str               # API Secret（64 位十六进制字符串）
+) -> str                      # HMAC-SHA256 签名的十六进制字符串（64 个字符，小写）
+```
+
+**签名算法说明**：
+
+1. 构建查询字符串（按键名排序，URL 编码）
+2. 计算请求体哈希（SHA256），无请求体时使用空字符串哈希常量
+3. 构建签名字符串：`{method}\n{path}\n{query_string}\n{body_hash}\n{timestamp}`
+4. 使用 Secret 对签名字符串进行 HMAC-SHA256 计算
+
+**空字符串哈希常量**：
+
+```python
 EMPTY_STRING_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-
-def generate_signature(
-    method: str,
-    path: str,
-    query_params: Optional[Dict[str, str]] = None,
-    body: Optional[str] = None,
-    timestamp: int,
-    secret: str
-) -> str:
-    """
-    生成 HMAC-SHA256 签名
-    
-    Args:
-        method: HTTP 方法（大写），如 'GET', 'POST', 'PUT', 'DELETE'
-        path: 请求路径（不含查询参数），如 '/api/v1/projects/{project_id}'
-        query_params: 查询参数字典（可选）
-        body: 请求体字符串（可选）
-        timestamp: Unix 时间戳（秒级）
-        secret: API Secret（64 位十六进制字符串）
-    
-    Returns:
-        HMAC-SHA256 签名的十六进制字符串（64 个字符，小写）
-    """
-    # 1. 构建查询字符串（按键名排序，URL 编码）
-    if query_params:
-        sorted_params = sorted(query_params.items())
-        query_string = urllib.parse.urlencode(sorted_params)
-    else:
-        query_string = ""
-    
-    # 2. 计算请求体哈希
-    if body:
-        body_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()
-    else:
-        # 使用空字符串哈希常量
-        body_hash = EMPTY_STRING_HASH
-    
-    # 3. 构建签名字符串
-    string_to_sign = f"{method}\n{path}\n{query_string}\n{body_hash}\n{timestamp}"
-    
-    # 4. 计算 HMAC-SHA256 签名
-    signature = hmac.new(
-        secret.encode('utf-8'),
-        string_to_sign.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
-    
-    return signature
 ```
 
 ### 1.2 使用示例
 
 ```python
+import time
+from codegate_sdk import generate_signature
+
 # 示例 1：GET 请求（无查询参数）
-project_id = "550e8400e29b41d4a716446655440000"
 timestamp = int(time.time())
 signature = generate_signature(
     method="GET",
@@ -85,7 +123,6 @@ signature = generate_signature(
     timestamp=timestamp,
     secret="a1b2c3d4e5f6..."
 )
-print(f"Signature: {signature}")
 
 # 示例 2：GET 请求（有查询参数）
 signature = generate_signature(
@@ -113,263 +150,85 @@ signature = generate_signature(
 
 ---
 
-## 2. 完整 SDK 客户端实现
+## 2. SDK 客户端
 
-### 2.1 SDK 客户端类
+### 2.1 客户端初始化
 
 ```python
-import requests
-import json
-import time
-from typing import Dict, Optional, Any, List
-from urllib.parse import urlencode
+from codegate_sdk import CodeGateClient
 
-class CodeGateClient:
-    """CodeGate SDK 客户端"""
-    
-    def __init__(
-        self,
-        api_key: str,
-        secret: str,
-        project_id: str,
-        base_url: str = "https://api.example.com"
-    ):
-        """
-        初始化客户端
-        
-        Args:
-            api_key: API Key（32 位 UUID，无连字符）
-            secret: API Secret（64 位十六进制字符串）
-            project_id: 项目 ID（32 位 UUID，无连字符）
-            base_url: API 基础 URL
-        """
-        self.api_key = api_key
-        self.secret = secret
-        self.project_id = project_id
-        self.base_url = base_url.rstrip('/')
-        self.session = requests.Session()
-    
-    def _generate_signature(
-        self,
-        method: str,
-        path: str,
-        query_params: Optional[Dict[str, str]] = None,
-        body: Optional[str] = None,
-        timestamp: int = None
-    ) -> str:
-        """生成 HMAC-SHA256 签名（内部方法）"""
-        if timestamp is None:
-            timestamp = int(time.time())
-        
-        return generate_signature(
-            method=method,
-            path=path,
-            query_params=query_params,
-            body=body,
-            timestamp=timestamp,
-            secret=self.secret
-        )
-    
-    def _make_request(
-        self,
-        method: str,
-        path: str,
-        query_params: Optional[Dict[str, Any]] = None,
-        body: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        发送 HTTP 请求（内部方法）
-        
-        Args:
-            method: HTTP 方法
-            path: 请求路径
-            query_params: 查询参数字典
-            body: 请求体字典
-        
-        Returns:
-            响应 JSON 数据
-        """
-        # 构建完整 URL
-        url = f"{self.base_url}{path}"
-        
-        # 准备查询参数（转换为字符串）
-        query_string_dict = None
-        if query_params:
-            query_string_dict = {k: str(v) for k, v in query_params.items()}
-            url += f"?{urlencode(query_string_dict)}"
-        
-        # 准备请求体
-        body_string = None
-        if body:
-            body_string = json.dumps(body, ensure_ascii=False)
-        
-        # 生成时间戳和签名
-        timestamp = int(time.time())
-        signature = self._generate_signature(
-            method=method,
-            path=path,
-            query_params=query_string_dict,
-            body=body_string,
-            timestamp=timestamp
-        )
-        
-        # 设置请求头
-        headers = {
-            "X-API-Key": self.api_key,
-            "X-Timestamp": str(timestamp),
-            "X-Signature": signature,
-            "Content-Type": "application/json"
-        }
-        
-        # 发送请求
-        response = self.session.request(
-            method=method,
-            url=url,
-            headers=headers,
-            data=body_string if body_string else None
-        )
-        
-        # 处理响应
-        response.raise_for_status()
-        return response.json()
-    
-    # ========== 项目信息 API ==========
-    
-    def get_project(self) -> Dict[str, Any]:
-        """
-        获取项目信息
-        
-        Returns:
-            项目信息字典
-        """
-        path = f"/api/v1/projects/{self.project_id}"
-        return self._make_request("GET", path)
-    
-    # ========== 激活码查询 API ==========
-    
-    def list_codes(
-        self,
-        page: int = 1,
-        page_size: int = 20,
-        status: Optional[str] = None,
-        search: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        查询激活码列表
-        
-        Args:
-            page: 页码（>= 1）
-            page_size: 每页数量（1-100）
-            status: 状态筛选（'unused', 'used', 'disabled', 'expired'）
-            search: 搜索关键词
-        
-        Returns:
-            激活码列表响应
-        """
-        path = f"/api/v1/projects/{self.project_id}/codes"
-        query_params = {
-            "page": page,
-            "page_size": page_size
-        }
-        if status:
-            query_params["status"] = status
-        if search:
-            query_params["search"] = search
-        
-        return self._make_request("GET", path, query_params=query_params)
-    
-    def get_code(self, code_id: str) -> Dict[str, Any]:
-        """
-        查询单个激活码详情
-        
-        Args:
-            code_id: 激活码 ID（32 位 UUID，无连字符）
-        
-        Returns:
-            激活码详情
-        """
-        path = f"/api/v1/projects/{self.project_id}/codes/{code_id}"
-        return self._make_request("GET", path)
-    
-    def get_code_by_code(self, code: str) -> Dict[str, Any]:
-        """
-        通过激活码内容查询
-        
-        Args:
-            code: 激活码内容
-        
-        Returns:
-            激活码详情
-        """
-        from urllib.parse import quote
-        encoded_code = quote(code, safe='')
-        path = f"/api/v1/projects/{self.project_id}/codes/by-code/{encoded_code}"
-        return self._make_request("GET", path)
-    
-    # ========== 激活码核销 API ==========
-    
-    def verify_code(
-        self,
-        code: str,
-        verified_by: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        核销激活码
-        
-        Args:
-            code: 激活码内容
-            verified_by: 核销用户标识（可选）
-        
-        Returns:
-            核销结果
-        """
-        path = f"/api/v1/projects/{self.project_id}/codes/verify"
-        body = {"code": code}
-        if verified_by:
-            body["verified_by"] = verified_by
-        
-        return self._make_request("POST", path, body=body)
-    
-    def reactivate_code(
-        self,
-        code: str,
-        reactivated_by: Optional[str] = None,
-        reason: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        重新激活激活码
-        
-        Args:
-            code: 激活码内容
-            reactivated_by: 重新激活操作的用户标识（可选）
-            reason: 重新激活的原因说明（可选）
-        
-        Returns:
-            重新激活结果
-        """
-        path = f"/api/v1/projects/{self.project_id}/codes/reactivate"
-        body = {"code": code}
-        if reactivated_by:
-            body["reactivated_by"] = reactivated_by
-        if reason:
-            body["reason"] = reason
-        
-        return self._make_request("POST", path, body=body)
-    
-    # ========== 统计信息 API ==========
-    
-    def get_statistics(self) -> Dict[str, Any]:
-        """
-        获取项目统计信息
-        
-        Returns:
-            统计信息
-        """
-        path = f"/api/v1/projects/{self.project_id}/statistics"
-        return self._make_request("GET", path)
+client = CodeGateClient(
+    api_key: str,      # API Key（32 位 UUID，无连字符）
+    secret: str,       # API Secret（64 位十六进制字符串）
+    project_id: str,   # 项目 ID（32 位 UUID，无连字符）
+    base_url: str = "https://api.example.com"  # API 基础 URL
+)
 ```
 
-### 2.2 使用示例
+### 2.2 API 方法
+
+#### 2.2.1 项目信息 API
+
+```python
+# 获取项目信息
+project = client.get_project() -> Dict[str, Any]
+```
+
+#### 2.2.2 激活码查询 API
+
+```python
+# 查询激活码列表
+codes = client.list_codes(
+    page: int = 1,                    # 页码（>= 1）
+    page_size: int = 20,              # 每页数量（1-100）
+    status: Optional[str] = None,     # 状态筛选（'unused', 'used', 'disabled', 'expired'）
+    search: Optional[str] = None      # 搜索关键词
+) -> Dict[str, Any]
+
+# 查询单个激活码详情（通过 ID）
+code = client.get_code(code_id: str) -> Dict[str, Any]
+
+# 通过激活码内容查询
+code = client.get_code_by_code(code: str) -> Dict[str, Any]
+```
+
+#### 2.2.3 激活码核销 API
+
+```python
+# 核销激活码
+result = client.verify_code(
+    code: str,                        # 激活码内容
+    verified_by: Optional[str] = None # 核销用户标识（可选）
+) -> Dict[str, Any]
+
+# 重新激活激活码
+result = client.reactivate_code(
+    code: str,                           # 激活码内容
+    reactivated_by: Optional[str] = None # 重新激活操作的用户标识（可选）
+    reason: Optional[str] = None         # 重新激活的原因说明（可选）
+) -> Dict[str, Any]
+```
+
+#### 2.2.4 统计信息 API
+
+```python
+# 获取项目统计信息
+stats = client.get_statistics() -> Dict[str, Any]
+```
+
+### 2.3 使用示例
+
+**安装 SDK**：
+
+```bash
+# 从构建的 wheel 文件安装
+pip install dist/codegate-sdk-0.1.0-py3-none-any.whl
+
+# 或使用 uv
+uv pip install dist/codegate-sdk-0.1.0-py3-none-any.whl
+```
+
+**基本使用**：
 
 ```python
 from codegate_sdk import CodeGateClient
@@ -426,7 +285,7 @@ print(f"Used codes: {stats['used_codes']}")
 print(f"Unused codes: {stats['unused_codes']}")
 ```
 
-### 2.3 错误处理示例
+### 2.4 错误处理示例
 
 ```python
 import requests
@@ -475,15 +334,19 @@ except Exception as e:
 
 ---
 
-## 3. 依赖安装
+## 3. 依赖
 
-### 3.1 使用 pip 安装依赖
+### 3.1 核心依赖
+
+- `requests>=2.28.0`：HTTP 请求库
+
+### 3.2 安装依赖
 
 ```bash
 pip install requests
 ```
 
-### 3.2 requirements.txt
+或使用 `requirements.txt`：
 
 ```
 requests>=2.28.0
@@ -517,6 +380,7 @@ client = CodeGateClient(
 ```python
 import time
 from functools import wraps
+import requests
 
 def retry_on_failure(max_retries=3, delay=1):
     """重试装饰器"""
@@ -550,67 +414,25 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 在客户端中添加日志
-class CodeGateClient:
-    # ... 其他代码 ...
-    
-    def _make_request(self, method, path, query_params=None, body=None):
-        logger.info(f"Making {method} request to {path}")
-        try:
-            result = self._make_request_impl(method, path, query_params, body)
-            logger.info(f"Request successful: {path}")
-            return result
-        except Exception as e:
-            logger.error(f"Request failed: {path}, Error: {e}")
-            raise
+# 使用示例
+logger.info(f"Verifying code: {code}")
+result = client.verify_code(code=code)
+logger.info(f"Verification result: {result}")
 ```
 
 ---
 
 ## 5. 测试
 
-### 5.1 单元测试示例
+### 5.1 单元测试
 
-```python
-import unittest
-from unittest.mock import Mock, patch
-from codegate_sdk import CodeGateClient, generate_signature
+SDK 提供了单元测试示例，位于 `sdk/python/tests/` 目录。测试覆盖签名生成、客户端方法等核心功能。
 
-class TestCodeGateClient(unittest.TestCase):
-    
-    def setUp(self):
-        self.client = CodeGateClient(
-            api_key="test_api_key",
-            secret="test_secret",
-            project_id="test_project_id"
-        )
-    
-    def test_generate_signature(self):
-        """测试签名生成"""
-        signature = generate_signature(
-            method="GET",
-            path="/api/v1/projects/test",
-            query_params=None,
-            body=None,
-            timestamp=1704153600,
-            secret="test_secret"
-        )
-        self.assertIsInstance(signature, str)
-        self.assertEqual(len(signature), 64)  # SHA256 十六进制字符串长度为 64
-    
-    @patch('codegate_sdk.requests.Session')
-    def test_get_project(self, mock_session):
-        """测试获取项目信息"""
-        mock_response = Mock()
-        mock_response.json.return_value = {"id": "test", "name": "Test Project"}
-        mock_response.raise_for_status = Mock()
-        mock_session.return_value.request.return_value = mock_response
-        
-        result = self.client.get_project()
-        self.assertEqual(result["name"], "Test Project")
+运行测试：
 
-if __name__ == '__main__':
-    unittest.main()
+```bash
+cd sdk/python
+uv run pytest
 ```
 
 ---
@@ -646,3 +468,11 @@ if __name__ == '__main__':
 
 1. 确认 `project_id` 与生成 API Key 时返回的 `project_id` 一致
 2. 检查路径中的 `project_id` 参数是否正确
+
+---
+
+## 7. 参考
+
+- **SDK 源码**：`codegate/sdk/python/src/codegate_sdk/`
+- **API 设计文档**：[`README.md`](./README.md)
+- **使用示例**：`codegate/sdk/python/examples/`
