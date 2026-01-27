@@ -92,7 +92,6 @@ export default function ProjectDetailPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [generateLoading, setGenerateLoading] = useState(false);
   const [isNeverExpiresEdit, setIsNeverExpiresEdit] = useState(false);
-  const [editStatus, setEditStatus] = useState(false);
   const [activeTab, setActiveTab] = useState<'codes' | 'api_keys'>('codes');
 
   // API Key 状态
@@ -474,14 +473,12 @@ export default function ProjectDetailPage() {
     const name = (formData.get('name') as string) || '';
     const description = (formData.get('description') as string) || '';
     const expiresAt = (formData.get('expires_at') as string) || '';
-    const statusChecked = (formData.get('status') as string) === 'on';
 
     try {
       const updated = await projectsApi.update(project.id, {
         name: name.trim(),
         description: description.trim() || null,
-        expires_at: expiresAt ? dateTimeLocalToTimestamp(expiresAt) : null,
-        status: statusChecked,
+        expires_at: isNeverExpiresEdit || !expiresAt ? null : dateTimeLocalToTimestamp(expiresAt),
       });
       // PRD：项目编辑成功统一为“保存成功”
       toast.success('保存成功');
@@ -572,7 +569,6 @@ export default function ProjectDetailPage() {
                 onClick={() => {
                   if (project) {
                     setIsNeverExpiresEdit(!project.expires_at);
-                    setEditStatus(project.status);
                   }
                   setShowEditProjectDialog(true);
                 }}
@@ -1433,7 +1429,6 @@ export default function ProjectDetailPage() {
             setShowEditProjectDialog(open);
             if (!open) {
               setIsNeverExpiresEdit(false);
-              setEditStatus(false);
             }
           }}
         >
@@ -1496,14 +1491,6 @@ export default function ProjectDetailPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="proj_status"
-                    checked={editStatus}
-                    onCheckedChange={setEditStatus}
-                  />
-                  <Label htmlFor="proj_status">启用项目</Label>
-                </div>
                 <DialogFooter>
                   <Button
                     type="button"
@@ -1511,7 +1498,6 @@ export default function ProjectDetailPage() {
                     onClick={() => {
                       setShowEditProjectDialog(false);
                       setIsNeverExpiresEdit(false);
-                      setEditStatus(false);
                     }}
                   >
                     取消

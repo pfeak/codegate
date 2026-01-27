@@ -84,9 +84,9 @@ export default function ProjectsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
-  const [isNeverExpiresCreate, setIsNeverExpiresCreate] = useState(false);
+  // PRD：创建项目时默认勾选“永不过期”
+  const [isNeverExpiresCreate, setIsNeverExpiresCreate] = useState(true);
   const [isNeverExpiresEdit, setIsNeverExpiresEdit] = useState(false);
-  const [editStatus, setEditStatus] = useState(false);
 
   const pageSize = DEFAULT_PAGE_SIZE;
 
@@ -187,7 +187,8 @@ export default function ProjectsPage() {
       });
       toast.success('创建成功');
       setShowCreateModal(false);
-      setIsNeverExpiresCreate(false);
+      // PRD：创建项目时默认勾选“永不过期”
+      setIsNeverExpiresCreate(true);
       setPage(1);
       syncQuery({ page: 1, search, status });
       setProjects((prev) => [created, ...prev].slice(0, pageSize));
@@ -211,8 +212,6 @@ export default function ProjectsPage() {
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
     const expiresAt = formData.get('expires_at') as string;
-    // 使用state中的状态值
-    const status = editStatus;
 
     // 日期验证：确保不为过去时间
     if (expiresAt && !isNeverExpiresEdit) {
@@ -229,14 +228,12 @@ export default function ProjectsPage() {
         name: name.trim(),
         description: description.trim() || null,
         expires_at: isNeverExpiresEdit || !expiresAt ? null : dateTimeLocalToTimestamp(expiresAt),
-        status,
       });
       // PRD：编辑成功统一为“保存成功”
       toast.success('保存成功');
       setShowEditModal(false);
       setEditingProject(null);
       setIsNeverExpiresEdit(false);
-      setEditStatus(false);
       replaceProjectInList(updated);
     } catch (error: any) {
       const msg = getErrorMessage(error, '保存失败：请稍后重试');
@@ -296,8 +293,6 @@ export default function ProjectsPage() {
       setEditingProject(project);
       // 根据expires_at初始化"永不过期"开关状态
       setIsNeverExpiresEdit(!project.expires_at);
-      // 初始化状态开关
-      setEditStatus(project.status);
       setShowEditModal(true);
     } catch (error: any) {
       toast.error(getErrorMessage(error, '加载项目数据失败'));
@@ -349,7 +344,11 @@ export default function ProjectsPage() {
             </Button>
             <Button
               type="button"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => {
+                // PRD：打开创建弹框时默认勾选“永不过期”
+                setIsNeverExpiresCreate(true);
+                setShowCreateModal(true);
+              }}
             >
               <Plus className="h-4 w-4" />
               创建项目
@@ -539,7 +538,12 @@ export default function ProjectsPage() {
         onOpenChange={(open) => {
           setShowCreateModal(open);
           if (!open) {
-            setIsNeverExpiresCreate(false);
+            // PRD：下次打开仍默认勾选“永不过期”
+            setIsNeverExpiresCreate(true);
+          } else {
+            // 确保默认态下日期输入为空
+            const input = document.getElementById('create_expires_at') as HTMLInputElement | null;
+            if (input) input.value = '';
           }
         }}
       >
@@ -592,7 +596,7 @@ export default function ProjectsPage() {
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => {
                 setShowCreateModal(false);
-                setIsNeverExpiresCreate(false);
+                setIsNeverExpiresCreate(true);
               }}>
                 取消
               </Button>
@@ -612,7 +616,6 @@ export default function ProjectsPage() {
           if (!open) {
             setEditingProject(null);
             setIsNeverExpiresEdit(false);
-            setEditStatus(false);
           }
         }}
       >
@@ -690,14 +693,6 @@ export default function ProjectsPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="edit_status"
-                  checked={editStatus}
-                  onCheckedChange={setEditStatus}
-                />
-                <Label htmlFor="edit_status">启用项目</Label>
-              </div>
               <DialogFooter>
                 <Button
                   type="button"
@@ -706,7 +701,6 @@ export default function ProjectsPage() {
                     setShowEditModal(false);
                     setEditingProject(null);
                     setIsNeverExpiresEdit(false);
-                    setEditStatus(false);
                   }}
                 >
                   取消
