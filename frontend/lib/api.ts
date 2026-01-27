@@ -419,3 +419,34 @@ export const verificationLogsApi = {
     ),
 };
 
+// ------------------------
+// Docs API
+// ------------------------
+
+export const docsApi = {
+  getSdkApi: () =>
+    apiRequest<string>("/api/docs/sdk-api", {
+      headers: {
+        Accept: "text/plain",
+      },
+    }).then((response) => {
+      // 处理 PlainTextResponse
+      if (typeof response === "string") {
+        return response;
+      }
+      return JSON.stringify(response);
+    }),
+
+  getPythonSdk: () =>
+    apiRequest<string>("/api/docs/python-sdk", {
+      headers: {
+        Accept: "text/plain",
+      },
+    }).then((response) => {
+      // 处理 PlainTextResponse
+      if (typeof response === "string") {
+        return response;
+      }
+      return JSON.stringify(response);
+    }),
+};

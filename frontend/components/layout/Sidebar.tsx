@@ -22,7 +22,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Folder, CheckCircle, Book, User, Menu, X, LogOut } from 'lucide-react';
 import { useState } from 'react';
-import { authApi, API_BASE_URL } from '@/lib/api';
+import { authApi } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 
 export default function Sidebar() {
@@ -35,7 +35,7 @@ export default function Sidebar() {
     { path: '/', label: '首页', icon: Home },
     { path: '/projects', label: '项目管理', icon: Folder },
     { path: '/verify', label: '核销验证', icon: CheckCircle },
-    { path: '/docs', label: 'API 文档', icon: Book, external: true },
+    { path: '/docs', label: 'API 文档', icon: Book },
     { path: '/profile', label: '个人管理', icon: User },
     { path: '/logout', label: '登出', icon: LogOut, action: true },
   ];
@@ -91,7 +91,7 @@ export default function Sidebar() {
         <nav className="flex-1 overflow-y-auto py-4">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = item.external || item.action ? false : isActive(item.path);
+            const active = item.action ? false : isActive(item.path);
             const className = [
               'flex items-center px-4 py-3 rounded-md text-foreground transition-colors',
               'hover:bg-accent hover:text-accent-foreground',
@@ -99,22 +99,6 @@ export default function Sidebar() {
             ]
               .filter(Boolean)
               .join(' ');
-
-            if (item.external) {
-              return (
-                <a
-                  key={item.path}
-                  href={`${API_BASE_URL}${item.path}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={className}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Icon className="h-5 w-5 mr-3" />
-                  <span className="text-sm font-medium">{item.label}</span>
-                </a>
-              );
-            }
 
             if (item.action) {
               return (
