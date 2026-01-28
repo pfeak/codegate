@@ -1,0 +1,41 @@
+{
+  "name": "@codegate/sdk",
+  "version": "0.1.0",
+  "description": "CodeGate JavaScript/TypeScript SDK - 用于与 CodeGate API 进行交互的 JavaScript/TypeScript 客户端库",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.6"
+  },
+  "keywords": [
+    "codegate",
+    "activation-code",
+    "sdk",
+    "api-client"
+  ],
+  "license": "Apache-2.0"
+}
