@@ -1,6 +1,6 @@
 [project]
 name = "codegate-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "CodeGate Python SDK - 用于与 CodeGate API 进行交互的 Python 客户端库"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,6 +18,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
@@ -48,7 +50,7 @@ packages = ["src/codegate_sdk"]
 
 [tool.black]
 line-length = 100
-target-version = ['py310', 'py311', 'py312']
+target-version = ['py310', 'py311', 'py312', 'py313', 'py314']
 
 [tool.ruff]
 line-length = 100
@@ -62,5 +64,7 @@ python_functions = ["test_*"]
 
 [dependency-groups]
 dev = [
+    "build>=1.4.0",
     "pytest>=9.0.2",
+    "twine>=6.2.0",
 ]
