@@ -150,8 +150,9 @@ result = with_retry(lambda: client.verify_code(code="ABC12345"))
 
 ```bash
 cd sdk/python && uv build
-pip install dist/codegate-sdk-0.1.0-py3-none-any.whl
-# 或： uv pip install dist/codegate-sdk-0.1.0-py3-none-any.whl
+# 生成的 wheel 文件名会包含版本号，例如：codegate_sdk-0.1.1-py3-none-any.whl
+pip install dist/codegate_sdk-*.whl
+# 或： uv pip install dist/codegate_sdk-*.whl
 ```
 
 ### 运行示例

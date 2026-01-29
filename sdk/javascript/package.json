@@ -1,5 +1,5 @@
 {
-  "name": "@codegate/sdk",
+  "name": "codegate-sdk",
   "version": "0.1.0",
   "description": "CodeGate JavaScript/TypeScript SDK - 用于与 CodeGate API 进行交互的 JavaScript/TypeScript 客户端库",
   "type": "module",

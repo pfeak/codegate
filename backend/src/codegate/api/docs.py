@@ -104,3 +104,24 @@ def get_python_sdk_doc(
     except Exception as e:
         logger.error(f"读取文档文件失败: {e}")
         raise HTTPException(status_code=500, detail=f"读取文档文件失败: {str(e)}")
+
+
+@router.get("/javascript-sdk", response_class=PlainTextResponse)
+def get_javascript_sdk_doc(
+    current_admin: AdminResponse = Depends(require_admin),
+):
+    """
+    获取 JavaScript/TypeScript SDK 文档内容
+    """
+    doc_path = DOCS_BASE_PATH / "javascript.md"
+
+    if not doc_path.exists():
+        logger.error(f"文档文件不存在: {doc_path}")
+        raise HTTPException(status_code=404, detail="文档文件不存在")
+
+    try:
+        content = doc_path.read_text(encoding="utf-8")
+        return content
+    except Exception as e:
+        logger.error(f"读取文档文件失败: {e}")
+        raise HTTPException(status_code=500, detail=f"读取文档文件失败: {str(e)}")

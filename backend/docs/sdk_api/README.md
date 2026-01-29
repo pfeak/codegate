@@ -2,7 +2,10 @@
 
 面向 **API 调用方**：如何用 API Key + HMAC-SHA256 签名调用接口，完成查询、核销、重新激活等操作。
 
-> **使用 Python？** 推荐直接用 [Python SDK](python.md)，无需手写签名。
+推荐优先使用 SDK，无需手写签名。
+
+- Python SDK
+- JavaScript/TypeScript SDK
 
 ---
 

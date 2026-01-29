@@ -449,4 +449,17 @@ export const docsApi = {
       }
       return JSON.stringify(response);
     }),
+
+  getJavascriptSdk: () =>
+    apiRequest<string>("/api/docs/javascript-sdk", {
+      headers: {
+        Accept: "text/plain",
+      },
+    }).then((response) => {
+      // 处理 PlainTextResponse
+      if (typeof response === "string") {
+        return response;
+      }
+      return JSON.stringify(response);
+    }),
 };

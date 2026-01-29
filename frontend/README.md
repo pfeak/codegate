@@ -1,36 +1,53 @@
-这是一个使用 [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) 创建的 [Next.js](https://nextjs.org) 项目。
+# CodeGate Frontend
 
-## 开始使用
+CodeGate 前端站点（Next.js App Router），用于管理员登录、项目管理、激活码查询/核销、文档页等。
 
-首先，运行开发服务器：
+## 环境要求
+
+- Node.js >= 18
+- 包管理器：`pnpm`（见 `package.json#packageManager`）
+
+## 快速开始（开发）
 
 ```bash
-npm run dev
-# 或
-yarn dev
-# 或
+cd frontend
+pnpm install
+
+# 前端通过该地址访问后端 API（浏览器可访问的地址）
+export NEXT_PUBLIC_API_URL="http://localhost:8000"
+
 pnpm dev
-# 或
-bun dev
 ```
 
-在浏览器中打开 [http://localhost:3000](http://localhost:3000) 查看结果。
+访问：
 
-您可以通过修改 `app/page.tsx` 来开始编辑页面。编辑文件时，页面会自动更新。
+- 前端：`http://localhost:3000`
+- 后端（需要另起终端启动）：`http://localhost:8000`
 
-此项目使用 [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) 自动优化并加载 [Geist](https://vercel.com/font)，这是 Vercel 的新字体家族。
+## 常用命令
 
-## 了解更多
+```bash
+# 开发
+pnpm dev
 
-要了解更多关于 Next.js 的信息，请查看以下资源：
+# 构建
+pnpm build
 
-- [Next.js 文档](https://nextjs.org/docs) - 了解 Next.js 的功能和 API。
-- [学习 Next.js](https://nextjs.org/learn) - 一个交互式 Next.js 教程。
+# 生产运行
+pnpm start
 
-您可以查看 [Next.js GitHub 仓库](https://github.com/vercel/next.js) - 欢迎您的反馈和贡献！
+# 代码检查
+pnpm lint
+```
 
-## 在 Vercel 上部署
+## 环境变量
 
-部署 Next.js 应用程序最简单的方法是使用 Next.js 创建者提供的 [Vercel 平台](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme)。
+| 变量名 | 必填 | 说明 | 示例 |
+|------|------|------|------|
+| `NEXT_PUBLIC_API_URL` | 是 | 后端 API 基地址（浏览器侧访问） | `http://localhost:8000` |
 
-查看我们的 [Next.js 部署文档](https://nextjs.org/docs/app/building-your-application/deploying) 了解更多详情。
+> 说明：`NEXT_PUBLIC_*` 变量会暴露到浏览器端，请勿放置敏感信息（如密钥）。
+
+## Docker 部署
+
+最小化的 Docker/Compose 部署方案在仓库根目录的 `deploy/` 下，详见 `deploy/README.md`。

@@ -18,34 +18,70 @@
 ## 技术栈
 
 - **后端**: Python 3.12+, FastAPI, SQLAlchemy ORM
-- **数据库**: SQLite（WAL 模式，支持并发读写）
-- **前端**: Jinja2 模板引擎 + Tailwind CSS + FontAwesome 图标
-- **工具**: FileLock（文件锁，用于 SQLite 并发控制）、typer（CLI 工具）
-- **API 文档**: FastAPI 自动生成 OpenAPI/Swagger 文档
+- **数据库**: SQLite / PostgreSQL（可选）
+- **前端**: Next.js（React）+ Tailwind CSS
+- **部署**: Docker / docker compose（见 `deploy/`）
+- **API 文档**: FastAPI 自动生成 OpenAPI/Swagger 文档（`/docs`、`/redoc`）
 
 ## 快速开始
 
-### 安装依赖
+本仓库包含三部分：
+
+- **后端服务**：`backend/`
+- **前端站点**：`frontend/`
+- **SDK**：`sdk/`（JavaScript + Python）
+
+### 启动后端（开发）
 
 ```bash
-# 使用 uv 安装依赖
+cd backend
 uv sync
-```
 
-### 运行服务
+cp .env.example .env
+# 如需切换数据库/端口等，编辑 .env
 
-```bash
+# 首次运行初始化数据库（会创建默认管理员账号）
+uv run python -c "from src.codegate.database import init_db; init_db()"
+
 # 启动开发服务器
 uv run python main.py
 ```
 
-服务将在 `http://localhost:8000` 启动。
+后端服务默认启动在 `http://localhost:8000`：
 
-### 访问界面
+- **API 文档**: `http://localhost:8000/docs`
+- **健康检查**: `http://localhost:8000/health`
 
-- **Web 界面**: http://localhost:8000
-- **API 文档**: http://localhost:8000/docs (Swagger UI)
-- **API 文档**: http://localhost:8000/redoc (ReDoc)
+### 启动前端（开发）
+
+```bash
+cd frontend
+pnpm install
+
+# 让前端指向你的后端地址（浏览器可访问的地址）
+export NEXT_PUBLIC_API_URL="http://localhost:8000"
+
+pnpm dev
+```
+
+前端默认启动在 `http://localhost:3000`。
+
+### 一键 Docker 启动（推荐用于本地/演示）
+
+最小化部署：**1 个后端容器（SQLite）+ 1 个前端容器**，见 `deploy/README.md`：
+
+```bash
+cd deploy
+cp .env.example .env
+docker compose up -d --build
+```
+
+## 文档入口
+
+- **后端**：`backend/README.md`
+- **前端**：`frontend/README.md`
+- **Docker 部署**：`deploy/README.md`
+- **SDK**：`sdk/README.md`
 
 ## License
 

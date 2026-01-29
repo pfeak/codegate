@@ -40,11 +40,12 @@ import { useToast } from '@/components/ui/Toast';
 import { docsApi } from '@/lib/api';
 import { cn, getErrorMessage } from '@/lib/utils';
 
-type DocType = 'sdk-api' | 'python-sdk';
+type DocType = 'sdk-api' | 'python-sdk' | 'javascript-sdk';
 
 const NAV_ITEMS: { id: DocType; label: string; description: string }[] = [
   { id: 'sdk-api', label: 'API 文档', description: '如何调用后端 API 的使用指南' },
   { id: 'python-sdk', label: 'Python SDK', description: '安装、初始化与常见用法' },
+  { id: 'javascript-sdk', label: 'JS/TS SDK', description: '安装、初始化与常见用法' },
 ];
 
 export default function DocsPage() {
@@ -52,6 +53,7 @@ export default function DocsPage() {
   const [docsContent, setDocsContent] = useState<Record<DocType, string>>({
     'sdk-api': '',
     'python-sdk': '',
+    'javascript-sdk': '',
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +78,11 @@ export default function DocsPage() {
     setError(null);
     try {
       const content =
-        doc === 'sdk-api' ? await docsApi.getSdkApi() : await docsApi.getPythonSdk();
+        doc === 'sdk-api'
+          ? await docsApi.getSdkApi()
+          : doc === 'python-sdk'
+            ? await docsApi.getPythonSdk()
+            : await docsApi.getJavascriptSdk();
       setDocsContent((prev) => ({ ...prev, [doc]: content }));
       scrollToTop();
     } catch (err) {

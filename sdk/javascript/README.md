@@ -5,20 +5,24 @@ CodeGate 的 JavaScript/TypeScript 客户端，用于与 CodeGate API 交互：�
 ## 安装
 
 ```bash
-npm install @codegate/sdk
+npm install codegate-sdk
 ```
 
 或从本地构建产物安装（联调时）：
 
 ```bash
-cd sdk/javascript && npm run build
-npm install /path/to/codegate/sdk/javascript
+cd sdk/javascript
+npm install
+npm run build
+npm pack
+# 生成的 tgz 文件名会包含版本号，例如：codegate-sdk-0.1.0.tgz
+npm install ./codegate-sdk-*.tgz
 ```
 
 ## 快速开始
 
 ```typescript
-import { CodeGateClient } from '@codegate/sdk';
+import { CodeGateClient } from 'codegate-sdk';
 
 const client = new CodeGateClient({
   apiKey: '550e8400e29b41d4a716446655440000',
@@ -60,7 +64,7 @@ if (result.success) console.log('Verified at:', result.verified_at);
 `4xx`/`5xx` 会抛出 `CodeGateApiError`，包含 `status`、`detail`：
 
 ```typescript
-import { CodeGateClient, CodeGateApiError } from '@codegate/sdk';
+import { CodeGateClient, CodeGateApiError } from 'codegate-sdk';
 
 try {
   await client.verifyCode({ code: 'X' });
@@ -119,7 +123,7 @@ const client = new CodeGateClient({
 需要自建 HTTP 客户端时，可直接使用 `generateSignature` 生成签名：
 
 ```typescript
-import { generateSignature } from '@codegate/sdk';
+import { generateSignature } from 'codegate-sdk';
 
 const method = 'GET';
 const path = `/api/v1/projects/${projectId}/codes`;

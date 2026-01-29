@@ -4,9 +4,12 @@
 
 ## 快速开始
 
+> 后端默认监听 `0.0.0.0:8000`，本地访问地址通常为 `http://localhost:8000`。
+
 ### 安装依赖
 
 ```bash
+cd backend
 uv sync
 ```
 
@@ -49,7 +52,26 @@ uv run python main.py
 
 - **Web 界面**: <http://localhost:8000>
 - **API 文档**: <http://localhost:8000/docs>
+- **ReDoc**: <http://localhost:8000/redoc>
 - **健康检查**: <http://localhost:8000/health>
+
+## 常用命令
+
+### 运行测试
+
+```bash
+cd backend
+uv run pytest
+```
+
+### 以 PostgreSQL 运行（概要）
+
+1. 在 `.env` 中将数据库切换为 PostgreSQL（按 `.env.example` 注释填写连接信息）
+2. 再执行一次初始化（或迁移/建表逻辑）：
+
+```bash
+uv run python -c "from src.codegate.database import init_db; init_db()"
+```
 
 ## 技术栈
 
