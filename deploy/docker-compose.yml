@@ -3,6 +3,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/backend/Dockerfile
+    image: codegate-backend:latest
     container_name: codegate-backend
     restart: unless-stopped
     environment:
@@ -21,6 +22,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     container_name: codegate-frontend
+    image: codegate-frontend:latest
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
