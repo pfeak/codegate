@@ -25,6 +25,7 @@ import {
   useRef,
   useState,
   type AnchorHTMLAttributes,
+  type ComponentPropsWithoutRef,
   type ReactNode,
 } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
@@ -91,10 +92,7 @@ export default function DocsPage() {
     loadDoc(activeDoc);
   }, [activeDoc, docsContent]);
 
-  function PreWithCopy({
-    children,
-    ...props
-  }: { children?: ReactNode } & Record<string, unknown>) {
+  function PreWithCopy({ children, ...props }: ComponentPropsWithoutRef<'pre'>) {
     const ref = useRef<HTMLPreElement>(null);
     const handleCopy = () => {
       const el = ref.current;
@@ -102,7 +100,7 @@ export default function DocsPage() {
       const text = el.textContent || '';
       void navigator.clipboard.writeText(text).then(
         () => toast.success('已复制'),
-        () => {},
+        () => { },
       );
     };
     return (
@@ -125,7 +123,7 @@ export default function DocsPage() {
   const markdownComponents: Components = useMemo(
     () => ({
       pre: PreWithCopy,
-      a({ href, children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) {
+      a({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
         if (!href) return <a {...props}>{children}</a>;
         const isExternal = href.startsWith('http://') || href.startsWith('https://');
         if (isExternal) {
@@ -164,10 +162,10 @@ export default function DocsPage() {
           </code>
         );
       },
-      table({ children }: { children: ReactNode }) {
+      table({ children, ...props }: ComponentPropsWithoutRef<'table'>) {
         return (
           <div className="overflow-x-auto">
-            <table>{children}</table>
+            <table {...props}>{children}</table>
           </div>
         );
       },

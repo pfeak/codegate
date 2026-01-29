@@ -1,0 +1,65 @@
+# CodeGate Docker 构建忽略文件
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/.venv
+backend/venv
+# backend/.env
+*.egg-info
+.eggs
+dist
+build
+
+# Node.js
+frontend/node_modules
+frontend/.next
+frontend/.pnpm-store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+.tox
+.nox
+backend/tests
+frontend/tests
+
+# Documentation
+docs/_build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs
+
+# Deploy
+deploy/.env
+deploy/.dockerignore
+
+# SDK
+sdk/
+
+# Development files
+LICENSE
+NOTICE

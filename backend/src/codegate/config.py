@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
 
+    # 文档根目录（可选）
+    # - 如果不设置，应用会根据当前工作目录自动推导 docs/sdk_api 目录
+    # - Docker 部署等自定义目录场景，建议显式设置为绝对路径
+    #   例如：/app/docs/sdk_api
+    CODEGATE_DOCS_BASE_PATH: Optional[str] = None
+
     # 日志配置
     LOG_LEVEL: str = "INFO"
     LOG_FILE: Optional[str] = None
