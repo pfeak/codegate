@@ -1,0 +1,24 @@
+services:
+  codegate:
+    build:
+      context: ../..
+      dockerfile: deploy/onebox/Dockerfile
+    image: codegate:0.1.0
+    container_name: codegate
+    restart: unless-stopped
+    environment:
+      # 容器内部端口
+      BACKEND_PORT: ${BACKEND_PORT:-8876}
+      FRONTEND_PORT: ${FRONTEND_PORT:-8877}
+      # 后端文档根目录（与 backend/docs/sdk_api 内容同步）
+      CODEGATE_DOCS_BASE_PATH: /app/backend/docs/sdk_api
+    ports:
+      - "${BACKEND_PORT:-8876}:8876"
+      - "${FRONTEND_PORT:-8877}:8877"
+    volumes:
+      # 根据后端实际数据目录调整，这里假设 backend 使用 /app/backend/data
+      - ./data/codegate:/app/backend/data
+
+networks:
+  codegate-network:
+    external: true

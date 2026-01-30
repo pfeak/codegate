@@ -7,27 +7,23 @@
  * - 错误响应优先读取 `{detail: string}`，否则回退到通用文案
  */
 
-// 根据当前访问地址自动匹配 API 地址（解决 localhost 与 127.0.0.1 的 Cookie domain 不匹配问题）
+// 根据当前访问地址 / 运行环境自动匹配 API 地址
+// - 在浏览器中默认走相对路径 `/api/*`，交给 Next.js / 反向代理处理
+// - 在 onebox / 容器内的 SSR 场景下，默认直连容器内的 FastAPI（127.0.0.1:BACKEND_PORT）
 function getApiBaseUrl(): string {
   // 优先使用环境变量
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
 
-  // 在客户端运行时，根据当前页面的 hostname 自动匹配
+  // 在客户端运行时，默认使用相对路径，让 Next.js rewrites / 反向代理处理 /api 转发
   if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-    const port = "8000";
-    // 如果通过 127.0.0.1 访问，API 也使用 127.0.0.1
-    if (hostname === "127.0.0.1") {
-      return `http://127.0.0.1:${port}`;
-    }
-    // 默认使用 localhost
-    return `http://localhost:${port}`;
+    return "";
   }
 
-  // 服务端渲染时使用默认值
-  return "http://localhost:8000";
+  // 服务端渲染时（例如 onebox 容器内），默认直连容器内部的 FastAPI 服务
+  const backendPort = process.env.BACKEND_PORT ?? "8876";
+  return `http://127.0.0.1:${backendPort}`;
 }
 
 export const API_BASE_URL = getApiBaseUrl();
