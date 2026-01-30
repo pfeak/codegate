@@ -82,6 +82,33 @@ pnpm dev
 
 前端默认启动在 `http://localhost:3000`。
 
+### 一键本地启动（前后端同时）
+
+若希望一条命令同时启动前后端（便于本地开发或嵌入其他项目的启动流程），可使用脚本：
+
+```bash
+# 在仓库根目录执行
+./scripts/start.sh
+```
+
+首次运行可先初始化数据库再启动：
+
+```bash
+./scripts/start.sh --init-db
+```
+
+脚本会以后台方式启动后端（8000）和前端（3000），按 `Ctrl+C` 会同时停止两者。  
+**从其他项目引用**：可将此脚本作为子服务启动入口，通过环境变量指定 CodeGate 根目录后执行，例如：
+
+```bash
+export CODEGATE_ROOT=/path/to/codegate
+"$CODEGATE_ROOT/scripts/start.sh"
+```
+
+依赖：本机需已安装 [uv](https://github.com/astral-sh/uv)（后端）和 [pnpm](https://pnpm.io/)（前端）。
+
+**服务器/域名部署**：在仓库根目录创建 `.env.codegate`（可参考 `scripts/.env.codegate.example`），设置 `NEXT_PUBLIC_API_URL` 为浏览器可访问的后端 API 地址（如 `https://api.example.com`）；同时在 `backend/.env` 中设置 `CORS_ORIGINS`，包含前端访问域名（如 `["https://codegate.example.com"]`），否则登录后 Cookie 跨域会 401。也可通过 `CODEGATE_ENV_FILE` 指定 env 文件路径。
+
 ### 一键 Docker 启动（推荐用于本地/演示）
 
 最小化部署：**1 个后端容器（SQLite）+ 1 个前端容器**，见 `deploy/README.md`：
