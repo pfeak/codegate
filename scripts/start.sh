@@ -105,7 +105,8 @@ cleanup() {
 }
 trap cleanup INT TERM EXIT
 
-# 启动后端（后台）
+# 启动后端（后台）：传入 BACKEND_PORT，与 .env.codegate 一致
+export BACKEND_PORT
 echo "启动后端: ${BACKEND_DIR} (端口 ${BACKEND_PORT})"
 (cd "${BACKEND_DIR}" && uv run python main.py) &
 BACKEND_PID=$!
@@ -124,7 +125,7 @@ done
 # - 若已设置 NEXT_PUBLIC_API_URL（.env.codegate 或 export）：用于服务器/域名部署，前端请求该 API 地址
 # - 未设置时：本地开发，由前端按访问 host 自动匹配（localhost/127.0.0.1），避免 Cookie 跨域 401
 echo "启动前端: ${FRONTEND_DIR} (端口 ${FRONTEND_PORT})"
-(cd "${FRONTEND_DIR}" && pnpm dev) &
+(cd "${FRONTEND_DIR}" && PORT="${FRONTEND_PORT}" pnpm dev) &
 FRONTEND_PID=$!
 
 echo ""

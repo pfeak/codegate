@@ -1,5 +1,6 @@
 """
 CodeGate 应用启动入口
+端口可由环境变量 BACKEND_PORT 覆盖（如 scripts/start.sh 通过 .env.codegate 设置）。
 
 Copyright 2026 pfeak
 
@@ -15,12 +16,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import os
 import uvicorn
 
 if __name__ == "__main__":
+    port = int(os.environ.get("BACKEND_PORT", "8000"))
     uvicorn.run(
         "codegate.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=port,
         reload=True,
     )
