@@ -109,15 +109,46 @@ export CODEGATE_ROOT=/path/to/codegate
 
 **服务器/域名部署**：在仓库根目录创建 `.env.codegate`（可参考 `scripts/.env.codegate.example`），设置 `NEXT_PUBLIC_API_URL` 为浏览器可访问的后端 API 地址（如 `https://api.example.com`）；同时在 `backend/.env` 中设置 `CORS_ORIGINS`，包含前端访问域名（如 `["https://codegate.example.com"]`），否则登录后 Cookie 跨域会 401。也可通过 `CODEGATE_ENV_FILE` 指定 env 文件路径。
 
-### 一键 Docker 启动（推荐用于本地/演示）
+### Docker 部署
 
-最小化部署：**1 个后端容器（SQLite）+ 1 个前端容器**，见 `deploy/README.md`：
+#### 方式一：源码构建（前后端分容器，适合本地/开发环境）
+
+最小化部署：**1 个后端容器（SQLite）+ 1 个前端容器**，使用仓库内 Dockerfile 构建镜像（详情见 `deploy/README.md`）：
 
 ```bash
 cd deploy
 cp .env.example .env
 docker compose up -d --build
 ```
+
+此方式会在本地构建 `codegate-backend` / `codegate-frontend` 镜像，适合需要修改源码或二次开发的场景。
+
+#### 方式二：一体化镜像（适合快速体验）
+
+可直接拉取使用（无需本地构建）：
+
+```bash
+docker pull pfeak/codegate:0.1.0
+```
+
+快速启动一体化容器（前端 + 后端在同一容器中，默认端口：后端 `8876`、前端 `8877`）：
+
+```bash
+docker run -d \
+  --name codegate \
+  -p 8876:8876 \
+  -p 8877:8877 \
+  -v $(pwd)/data/codegate:/app/backend/data \
+  pfeak/codegate:0.1.0
+```
+
+也可以使用仓库内的一体化 compose 配置（`deploy/onebox/docker-compose.yml`）。
+
+启动后：
+
+- 管理后台（前端）：`http://localhost:8877`
+- 后端 API：`http://localhost:8876`
+- API 文档：`http://localhost:8876/docs`
 
 ## 文档入口
 
