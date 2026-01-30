@@ -1,6 +1,6 @@
 #### Onebox Multi-stage Dockerfile: frontend (Next.js) + backend (FastAPI) in one image
 
-# Stage 1: build frontend with Node + pnpm
+#### Stage 1: build frontend with Node + pnpm（Next standalone 模式）
 FROM node:22-alpine AS frontend-build
 
 WORKDIR /app/frontend
@@ -16,10 +16,12 @@ COPY frontend/ ./
 
 # 前端在 onebox 场景下通过 Next.js rewrites 使用容器内部的 127.0.0.1:BACKEND_PORT，
 # 不再在构建时注入 NEXT_PUBLIC_API_URL，避免镜像与环境强绑定。
-RUN pnpm build
+# 已在 next.config.ts 中开启 output: "standalone"，这里构建并裁剪到生产依赖
+RUN pnpm build \
+    && pnpm prune --prod
 
 
-# Stage 2: final runtime image based on python:3.12-alpine
+#### Stage 2: final runtime image based on python:3.12-alpine
 FROM python:3.12-alpine
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -30,17 +32,19 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install runtime dependencies: node for Next.js, supervisor to manage processes
-# 运行阶段需要通过 pnpm 启动前端，这里用 npm 全局安装与 workspace 对齐的 pnpm 版本
-RUN apk add --no-cache nodejs npm curl supervisor \
-    && npm install -g pnpm@10.28.0
+# 运行阶段只需要 node + supervisor，不再需要 pnpm / npm / curl
+RUN apk add --no-cache nodejs supervisor
 
 # Copy backend source and install dependencies
 COPY backend/ /app/backend/
 WORKDIR /app/backend
 RUN pip install --no-cache-dir .
 
-# Copy built frontend from build stage
-COPY --from=frontend-build /app/frontend /app/frontend
+# Copy built frontend from build stage（Next standalone 输出）
+# .next/standalone 内包含最小化的 node_modules 和 server.js
+COPY --from=frontend-build /app/frontend/.next/standalone /app/frontend
+COPY --from=frontend-build /app/frontend/.next/static /app/frontend/.next/static
+COPY --from=frontend-build /app/frontend/public /app/frontend/public
 
 # Copy supervisord configuration from deploy/onebox
 COPY deploy/onebox/supervisord.conf /etc/supervisord.conf
