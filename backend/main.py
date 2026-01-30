@@ -20,7 +20,7 @@ import os
 import uvicorn
 
 if __name__ == "__main__":
-    port = int(os.environ.get("BACKEND_PORT", "8000"))
+    port = int(os.environ.get("BACKEND_PORT", "8876"))
     uvicorn.run(
         "codegate.main:app",
         host="0.0.0.0",
