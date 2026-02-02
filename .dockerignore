@@ -12,6 +12,10 @@ __pycache__
 .Python
 backend/.venv
 backend/venv
+# Backend runtime data (exclude from image context)
+backend/data
+# Also ignore any nested data dirs under backend
+backend/**/data
 # backend/.env
 *.egg-info
 .eggs

@@ -3,7 +3,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/onebox/Dockerfile
-    image: pfeak/codegate:0.1.1
+    image: pfeak/codegate:latest
     container_name: codegate
     restart: unless-stopped
     environment:
