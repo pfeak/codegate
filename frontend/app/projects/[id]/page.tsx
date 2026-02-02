@@ -20,19 +20,18 @@
 
 import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import { projectsApi, codesApi, apiKeysApi, DEFAULT_PAGE_SIZE } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { getErrorMessage, timestampToLocal, dateTimeLocalToTimestamp, formatNumber, timestampToDateTimeLocalValue, shortUuid } from '@/lib/utils';
-import { ArrowLeft, Plus, Edit, Trash2, Power, PowerOff, RotateCcw, Ban, Copy, Search, Loader2, Check, Calendar, KeyRound, RefreshCcw, Shield, ShieldOff } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Power, PowerOff, RotateCcw, Ban, Copy, Search, Loader2, Check, Calendar, KeyRound, RefreshCcw, Shield, ShieldOff, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -79,6 +78,8 @@ export default function ProjectDetailPage() {
   const [showBatchDisableDialog, setShowBatchDisableDialog] = useState(false);
   const [batchDisableCount, setBatchDisableCount] = useState<number | null>(null);
   const [batchDisableCountLoading, setBatchDisableCountLoading] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [selectedCodeId, setSelectedCodeId] = useState<string | null>(null);
   const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
   const [showEditProjectDialog, setShowEditProjectDialog] = useState(false);
@@ -91,7 +92,6 @@ export default function ProjectDetailPage() {
   const [sortBy, setSortBy] = useState<'created_at' | 'verified_at'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [generateLoading, setGenerateLoading] = useState(false);
-  const [isNeverExpiresEdit, setIsNeverExpiresEdit] = useState(false);
   const [activeTab, setActiveTab] = useState<'codes' | 'api_keys'>('codes');
 
   // API Key 状态
@@ -103,8 +103,8 @@ export default function ProjectDetailPage() {
   const [showKeySecretDialog, setShowKeySecretDialog] = useState(false);
   const [generatedKeyData, setGeneratedKeyData] = useState<any | null>(null);
   const [showDeleteKeyDialog, setShowDeleteKeyDialog] = useState(false);
+  const [showRefreshKeyConfirmDialog, setShowRefreshKeyConfirmDialog] = useState(false);
   const [selectedApiKeyId, setSelectedApiKeyId] = useState<string | null>(null);
-  const [isRefreshKeyMode, setIsRefreshKeyMode] = useState(false);
   const [lastKeyAction, setLastKeyAction] = useState<'generate' | 'refresh'>('generate');
 
   const pageSize = DEFAULT_PAGE_SIZE;
@@ -293,20 +293,19 @@ export default function ProjectDetailPage() {
     }
   };
 
-  const handleGenerateApiKey = async (name?: string | null) => {
+  const handleGenerateApiKey = async (name?: string | null, mode: 'generate' | 'refresh' = 'generate') => {
     setGenerateKeyLoading(true);
     try {
       const data = await apiKeysApi.generateOrRefresh(projectId, { name: name ?? null });
-      setLastKeyAction(isRefreshKeyMode ? 'refresh' : 'generate');
-      toast.success(isRefreshKeyMode ? 'API Key 刷新成功' : 'API Key 生成成功');
+      setLastKeyAction(mode);
+      toast.success(mode === 'refresh' ? 'API Key 刷新成功' : 'API Key 生成成功');
       setGeneratedKeyData(data);
       setShowKeySecretDialog(true);
       setShowGenerateKeyDialog(false);
       setGenerateKeyName('');
-      setIsRefreshKeyMode(false);
       await loadApiKeys();
     } catch (error: any) {
-      const prefix = isRefreshKeyMode ? '刷新 API Key 失败：' : '生成 API Key 失败：';
+      const prefix = mode === 'refresh' ? '刷新 API Key 失败：' : '生成 API Key 失败：';
       toast.error(`${prefix}${getErrorMessage(error, '请稍后重试')}`);
     } finally {
       setGenerateKeyLoading(false);
@@ -433,6 +432,101 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const csvEscape = (value: string) => {
+    const v = value ?? '';
+    if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+    return v;
+  };
+
+  const handleExportCodes = async () => {
+    setExportLoading(true);
+    try {
+      // PRD：导出当前项目全部激活码（不受筛选与分页影响）
+      // 优先走后端导出端点（PRD 推荐）
+      const endpoint = `/api/projects/${projectId}/codes/export?format=csv`;
+      const res = await fetch(endpoint, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          Accept: 'text/csv',
+        },
+      });
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const contentDisposition = res.headers.get('content-disposition') || '';
+        const filenameMatch = contentDisposition.match(/filename\*?=(?:UTF-8''|")?([^";\n]+)(?:"|;|$)/i);
+        const sanitizedProjectId = (project?.id || projectId).replace(/-/g, '');
+        const ts = Math.floor(Date.now() / 1000);
+        const fallbackFilename = `codegate-codes-${sanitizedProjectId}-${ts}.csv`;
+        const filename = filenameMatch?.[1] ? decodeURIComponent(filenameMatch[1]) : fallbackFilename;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        toast.success('导出成功');
+        setShowExportDialog(false);
+        return;
+      }
+
+      // 如果后端未提供导出端点，则前端兜底：分页拉取全部激活码并本地生成 CSV
+      const items: any[] = [];
+      let curPage = 1;
+      while (true) {
+        const pageData = await codesApi.list(projectId, {
+          page: curPage,
+          page_size: DEFAULT_PAGE_SIZE,
+        });
+        for (const item of pageData.items) items.push(item);
+        const fetched = pageData.items.length;
+        const totalCount = pageData.total ?? 0;
+        if (fetched === 0 || items.length >= totalCount) break;
+        curPage += 1;
+      }
+
+      const getStatusText = (code: any) => {
+        if (code.is_expired) return '已过期';
+        if (code.is_disabled) return '已禁用';
+        if (code.status) return '已使用';
+        return '未使用';
+      };
+
+      const header = ['id', 'code', 'status', 'created_at'].join(',');
+      const rows = items.map((it) => {
+        const cols = [
+          csvEscape(String(it.id ?? '')),
+          csvEscape(String(it.code ?? '')),
+          csvEscape(getStatusText(it)),
+          csvEscape(it.created_at ? timestampToLocal(it.created_at) : ''),
+        ];
+        return cols.join(',');
+      });
+      const csv = [header, ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const sanitizedProjectId = (project?.id || projectId).replace(/-/g, '');
+      const ts = Math.floor(Date.now() / 1000);
+      a.download = `codegate-codes-${sanitizedProjectId}-${ts}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('导出成功');
+      setShowExportDialog(false);
+    } catch (error: any) {
+      const msg = getErrorMessage(error, '请稍后重试');
+      toast.error(`导出失败：${msg}`);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const handleToggleProjectStatus = async () => {
     if (!project) return;
     try {
@@ -478,7 +572,7 @@ export default function ProjectDetailPage() {
       const updated = await projectsApi.update(project.id, {
         name: name.trim(),
         description: description.trim() || null,
-        expires_at: isNeverExpiresEdit || !expiresAt ? null : dateTimeLocalToTimestamp(expiresAt),
+        expires_at: !expiresAt ? null : dateTimeLocalToTimestamp(expiresAt),
       });
       // PRD：项目编辑成功统一为“保存成功”
       toast.success('保存成功');
@@ -551,10 +645,15 @@ export default function ProjectDetailPage() {
         <div className="mb-6 flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-            <Link href="/projects" className="inline-flex items-center text-primary hover:text-primary/80">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              返回项目列表
-            </Link>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => router.push('/projects')}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              返回
+            </Button>
           </div>
         </div>
 
@@ -567,9 +666,6 @@ export default function ProjectDetailPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  if (project) {
-                    setIsNeverExpiresEdit(!project.expires_at);
-                  }
                   setShowEditProjectDialog(true);
                 }}
               >
@@ -674,24 +770,14 @@ export default function ProjectDetailPage() {
           </Card>
         </div>
 
-        {/* 标签页切换 */}
-        <div className="mb-4 flex items-center gap-2">
-          <Button
-            variant={activeTab === 'codes' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('codes')}
-          >
-            激活码管理
-          </Button>
-          <Button
-            variant={activeTab === 'api_keys' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('api_keys')}
-          >
-            API 密钥
-          </Button>
-        </div>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'codes' | 'api_keys')} className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="codes">激活码管理</TabsTrigger>
+            <TabsTrigger value="api_keys">API 密钥</TabsTrigger>
+          </TabsList>
 
-        {activeTab === 'codes' ? (
-          <Card>
+          <TabsContent value="codes">
+            <Card>
             <CardHeader className="py-4 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground/80">激活码管理</CardTitle>
               <div className="flex items-center gap-2">
@@ -707,6 +793,13 @@ export default function ProjectDetailPage() {
                 >
                   <Ban className="h-4 w-4" />
                   批量禁用未使用
+                </Button>
+                <Button
+                  onClick={() => setShowExportDialog(true)}
+                  variant="outline"
+                >
+                  <Download className="h-4 w-4" />
+                  导出激活码
                 </Button>
               </div>
             </CardHeader>
@@ -817,9 +910,9 @@ export default function ProjectDetailPage() {
                             >
                               {code.code}
                               {copiedCodes.has(code.id) ? (
-                                <Check className="h-4 w-4 text-green-600 scale-110" />
+                                <Check className="h-4 w-4 text-green-600 scale-110 transition-all duration-200" />
                               ) : (
-                                <Copy className="h-4 w-4" />
+                                <Copy className="h-4 w-4 transition-all duration-200" />
                               )}
                             </button>
                           </TableCell>
@@ -931,15 +1024,16 @@ export default function ProjectDetailPage() {
               </div>
             </CardContent>
           </Card>
-        ) : (
-          <Card>
+          </TabsContent>
+
+          <TabsContent value="api_keys">
+            <Card>
             <CardHeader className="py-4 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground/80">API 密钥</CardTitle>
               <div className="flex items-center gap-2 flex-wrap">
                 {!apiKeys.length ? (
                   <Button
                     onClick={() => {
-                      setIsRefreshKeyMode(false);
                       setShowGenerateKeyDialog(true);
                     }}
                   >
@@ -951,8 +1045,7 @@ export default function ProjectDetailPage() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setIsRefreshKeyMode(true);
-                        setShowGenerateKeyDialog(true);
+                        setShowRefreshKeyConfirmDialog(true);
                       }}
                     >
                       <RefreshCcw className="h-4 w-4" />
@@ -1010,7 +1103,7 @@ export default function ProjectDetailPage() {
                     <div className="flex items-start gap-4">
                       <span className="w-24 text-sm font-medium text-muted-foreground flex-shrink-0">API Key</span>
                       <div className="flex-1 flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-sm break-all text-foreground" title={apiKeys[0].api_key}>
+                        <span className="font-mono text-sm truncate text-foreground" title={apiKeys[0].api_key}>
                           {apiKeys[0].api_key}
                         </span>
                         <Button
@@ -1062,7 +1155,8 @@ export default function ProjectDetailPage() {
               )}
             </CardContent>
           </Card>
-        )}
+          </TabsContent>
+        </Tabs>
 
         {/* 批量生成弹框 */}
         <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
@@ -1129,19 +1223,16 @@ export default function ProjectDetailPage() {
           open={showGenerateKeyDialog}
           onOpenChange={(open) => {
             setShowGenerateKeyDialog(open);
-            if (!open) {
-              setIsRefreshKeyMode(false);
-            }
           }}
         >
           <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
-              <DialogTitle>{isRefreshKeyMode ? '刷新 API Key' : '生成 API Key'}</DialogTitle>
+              <DialogTitle>生成 API Key</DialogTitle>
             </DialogHeader>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                handleGenerateApiKey(generateKeyName);
+                handleGenerateApiKey(generateKeyName, 'generate');
               }}
               className="space-y-4"
             >
@@ -1312,13 +1403,39 @@ export default function ProjectDetailPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>删除 API Key</AlertDialogTitle>
               <AlertDialogDescription>
-                删除后该 API Key 将立即失效。确定要继续吗？
+                删除后，该 API Key 将立即失效，使用该凭证的请求将返回 401 错误。确定要继续吗？
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>取消</AlertDialogCancel>
               <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteApiKey}>
-                确认删除
+                确定
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 刷新 API Key 确认 */}
+        <AlertDialog
+          open={showRefreshKeyConfirmDialog}
+          onOpenChange={(open) => setShowRefreshKeyConfirmDialog(open)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>刷新 API Key</AlertDialogTitle>
+              <AlertDialogDescription>
+                刷新后，旧的 API Key 和 Secret 将立即失效。确定要继续吗？
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowRefreshKeyConfirmDialog(false);
+                  handleGenerateApiKey(null, 'refresh');
+                }}
+              >
+                确定
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1328,15 +1445,14 @@ export default function ProjectDetailPage() {
         <AlertDialog open={showBatchDisableDialog} onOpenChange={setShowBatchDisableDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>确认批量禁用</AlertDialogTitle>
+              <AlertDialogTitle>批量禁用未使用激活码</AlertDialogTitle>
               <AlertDialogDescription>
-                确定要禁用当前筛选条件下的所有未使用激活码吗？
                 {batchDisableCountLoading ? (
-                  <span> 正在统计数量...</span>
+                  <span>正在统计数量...</span>
                 ) : typeof batchDisableCount === 'number' ? (
-                  <span> 预计影响 {batchDisableCount} 个激活码。</span>
+                  <span>确定要禁用 {batchDisableCount} 个未使用的激活码吗？</span>
                 ) : (
-                  <span>（数量统计失败，仍可继续操作）</span>
+                  <span>确定要禁用当前筛选条件下的所有未使用激活码吗？</span>
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -1345,7 +1461,41 @@ export default function ProjectDetailPage() {
               <AlertDialogAction
                 onClick={handleBatchDisableUnused}
               >
-                确认禁用
+                确定
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 导出激活码确认 */}
+        <AlertDialog
+          open={showExportDialog}
+          onOpenChange={(open) => {
+            setShowExportDialog(open);
+            if (!open) setExportLoading(false);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>导出激活码</AlertDialogTitle>
+              <AlertDialogDescription>
+                将导出当前项目全部激活码（CSV）。确定要继续吗？
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={exportLoading}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleExportCodes}
+                disabled={exportLoading}
+              >
+                {exportLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    导出中...
+                  </>
+                ) : (
+                  '确认导出'
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1427,9 +1577,6 @@ export default function ProjectDetailPage() {
           open={showEditProjectDialog}
           onOpenChange={(open) => {
             setShowEditProjectDialog(open);
-            if (!open) {
-              setIsNeverExpiresEdit(false);
-            }
           }}
         >
           <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -1457,28 +1604,9 @@ export default function ProjectDetailPage() {
                       type="datetime-local"
                       name="expires_at"
                       defaultValue={timestampToDateTimeLocalValue(project.expires_at)}
-                      disabled={isNeverExpiresEdit}
                       min={new Date().toISOString().slice(0, 16)}
                       className="pl-10 pr-3 w-auto min-w-[240px]"
                     />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="proj_never_expires"
-                      checked={isNeverExpiresEdit}
-                      onCheckedChange={(checked) => {
-                        setIsNeverExpiresEdit(checked);
-                        const input = document.getElementById('proj_expires') as HTMLInputElement;
-                        if (input) {
-                          if (checked) {
-                            input.value = '';
-                          } else if (project.expires_at) {
-                            input.value = timestampToDateTimeLocalValue(project.expires_at);
-                          }
-                        }
-                      }}
-                    />
-                    <Label htmlFor="proj_never_expires">永不过期</Label>
                   </div>
                   <div className="space-y-1">
                     {project.is_expired && (
@@ -1486,9 +1614,6 @@ export default function ProjectDetailPage() {
                         该项目已过期
                       </p>
                     )}
-                    <p className="text-sm text-muted-foreground">
-                      留空或选择未来日期，项目将在指定时间后过期
-                    </p>
                   </div>
                 </div>
                 <DialogFooter>
@@ -1497,7 +1622,6 @@ export default function ProjectDetailPage() {
                     variant="secondary"
                     onClick={() => {
                       setShowEditProjectDialog(false);
-                      setIsNeverExpiresEdit(false);
                     }}
                   >
                     取消
@@ -1554,9 +1678,9 @@ export default function ProjectDetailPage() {
                       title="复制ID"
                     >
                       {copiedId ? (
-                        <Check className="h-4 w-4 text-green-600 scale-110" />
+                        <Check className="h-4 w-4 text-green-600 scale-110 transition-all duration-200" />
                       ) : (
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-4 w-4 transition-all duration-200" />
                       )}
                     </button>
                   </div>
@@ -1583,9 +1707,9 @@ export default function ProjectDetailPage() {
                       title="复制激活码"
                     >
                       {copiedCode ? (
-                        <Check className="h-4 w-4 text-green-600 scale-110" />
+                        <Check className="h-4 w-4 text-green-600 scale-110 transition-all duration-200" />
                       ) : (
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-4 w-4 transition-all duration-200" />
                       )}
                     </button>
                   </div>
