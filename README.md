@@ -47,71 +47,9 @@ CodeGate 是一个轻量级 Python 后端服务，专注于 **激活码、邀请
 - **前端站点**：`frontend/`
 - **SDK**：`sdk/`（JavaScript + Python，如果有其他语言 SDK 需求，欢迎提 issue、pr）
 
-### 启动后端（开发）
-
-```bash
-cd backend
-uv sync
-
-cp .env.example .env
-# 如需切换数据库/端口等，编辑 .env
-
-# 首次运行初始化数据库（会创建默认管理员账号）
-uv run python -c "from src.codegate.database import init_db; init_db()"
-
-# 启动开发服务器
-uv run python main.py
-```
-
-后端服务默认启动在 `http://localhost:8000`：
-
-- **API 文档**: `http://localhost:8000/docs`
-- **健康检查**: `http://localhost:8000/health`
-
-### 启动前端（开发）
-
-```bash
-cd frontend
-pnpm install
-
-# 让前端指向你的后端地址（浏览器可访问的地址）
-export NEXT_PUBLIC_API_URL="http://localhost:8000"
-
-pnpm dev
-```
-
-前端默认启动在 `http://localhost:3000`。
-
-### 一键本地启动（前后端同时）
-
-若希望一条命令同时启动前后端（便于本地开发或嵌入其他项目的启动流程），可使用脚本：
-
-```bash
-# 在仓库根目录执行
-./scripts/start.sh
-```
-
-首次运行可先初始化数据库再启动：
-
-```bash
-./scripts/start.sh --init-db
-```
-
-脚本会以后台方式启动后端（8000）和前端（3000），按 `Ctrl+C` 会同时停止两者。  
-**从其他项目引用**：可将此脚本作为子服务启动入口，通过环境变量指定 CodeGate 根目录后执行，例如：
-
-```bash
-export CODEGATE_ROOT=/path/to/codegate
-"$CODEGATE_ROOT/scripts/start.sh"
-```
-
-依赖：本机需已安装 [uv](https://github.com/astral-sh/uv)（后端）和 [pnpm](https://pnpm.io/)（前端）。
-
-**服务器/域名部署**：在仓库根目录创建 `.env.codegate`（可参考 `scripts/.env.codegate.example`），设置 `NEXT_PUBLIC_API_URL` 为浏览器可访问的后端 API 地址（如 `https://api.example.com`）；同时在 `backend/.env` 中设置 `CORS_ORIGINS`，包含前端访问域名（如 `["https://codegate.example.com"]`），否则登录后 Cookie 跨域会 401。也可通过 `CODEGATE_ENV_FILE` 指定 env 文件路径。
-
 ### Docker 部署
 
-#### 方式一：源码构建（前后端分容器，适合本地/开发环境）
+#### 方式一：源码构建
 
 最小化部署：**1 个后端容器（SQLite）+ 1 个前端容器**，使用仓库内 Dockerfile 构建镜像（详情见 `deploy/README.md`）：
 
@@ -123,32 +61,92 @@ docker compose up -d --build
 
 此方式会在本地构建 `codegate-backend` / `codegate-frontend` 镜像，适合需要修改源码或二次开发的场景。
 
-#### 方式二：一体化镜像（适合快速体验）
+#### 方式二：快速开始
 
 可直接拉取使用（无需本地构建）：
 
 ```bash
-docker pull pfeak/codegate:0.1.0
+docker pull pfeak/codegate:latest
 ```
 
-快速启动一体化容器（前端 + 后端在同一容器中，默认端口：后端 `8876`、前端 `8877`）：
+快速启动一体化容器（前端 + 后端在同一容器中，默认端口：`8877`）：
 
 ```bash
 docker run -d \
   --name codegate \
-  -p 8876:8876 \
   -p 8877:8877 \
   -v $(pwd)/data/codegate:/app/backend/data \
-  pfeak/codegate:0.1.0
+  pfeak/codegate:latest
 ```
 
 也可以使用仓库内的一体化 compose 配置（`deploy/onebox/docker-compose.yml`）。
 
 启动后：
 
-- 管理后台（前端）：`http://localhost:8877`
-- 后端 API：`http://localhost:8876`
-- API 文档：`http://localhost:8876/docs`
+- 访问界面：`http://localhost:8877`
+
+## SDK
+
+本项目自带 **Python**、**JavaScript/TypeScript** 官方 SDK。你可以通过 pip/npm 直接安装，也可参考 [快速开始](https://docs.codegateapp.com/quickstart) 文档：
+
+### Python 安装
+
+```bash
+pip install codegate-sdk
+# 或使用 uv
+uv pip install codegate-sdk
+```
+
+### JavaScript/TypeScript 安装
+
+```bash
+npm install codegate-sdk
+```
+
+### 基本用法示例
+
+#### Python
+
+```python
+from codegate_sdk import CodeGateClient
+
+client = CodeGateClient(
+    api_key="你的API_KEY",
+    secret="你的SECRET",
+    project_id="你的PROJECT_ID",
+    base_url="http://localhost:8877"  # 或你的部署 API 地址
+)
+
+result = client.verify_code(code="ABC12345", verified_by="user123")
+if result['success']:
+    print(f"核销成功，时间: {result['verified_at']}")
+else:
+    print(f"核销失败: {result['error_code']} - {result['message']}")
+```
+
+#### JavaScript/TypeScript
+
+```typescript
+import { CodeGateClient } from 'codegate-sdk';
+
+const client = new CodeGateClient({
+  apiKey: '你的API_KEY',
+  secret: '你的SECRET',
+  projectId: '你的PROJECT_ID',
+  baseUrl: 'http://localhost:8877', // 或你的部署 API 地址
+});
+
+const result = await client.verifyCode({ code: 'ABC12345', verifiedBy: 'user123' });
+if (result.success) {
+  console.log('核销成功，时间:', result.verified_at);
+} else {
+  console.log('核销失败:', result.error_code, result.message);
+}
+```
+
+具体参数、环境变量等更多用法详见：[SDK 文档（Python）](https://docs.codegateapp.com/sdk/python) | [SDK 文档（JavaScript/TypeScript）](https://docs.codegateapp.com/sdk/javascript)
+
+其他语言 SDK 需求欢迎 [提 issue](https://github.com/pfeak/codegate/issues) 交流。
 
 ## 文档入口
 
