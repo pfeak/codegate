@@ -65,3 +65,27 @@ docker compose logs -f frontend
 | `BACKEND_PORT` | 8000 | 后端服务暴露到宿主机的端口 |
 | `FRONTEND_PORT` | 3000 | 前端服务暴露到宿主机的端口 |
 | `NEXT_PUBLIC_API_URL` | <http://localhost:8000> | 前端访问后端的 API 地址（浏览器看到的地址） |
+
+## 常见问题
+
+### 长久未登录忘记密码
+
+尝试下述方式重置用户密码，命令理解后可自由组合。
+
+```shell
+docker exec -it -w /app/backend codegate python -c "
+from sqlalchemy import select
+from codegate.database import SessionLocal
+from codegate.models.admin import Admin
+from codegate.services.auth import AuthService
+
+NEW = 'NwePass123'
+db = SessionLocal()
+admin = db.execute(select(Admin).where(Admin.username == 'admin')).scalar_one()
+admin.password_hash = AuthService.hash_password(NEW)
+admin.is_initial_password = True
+db.commit()
+print('已重置用户', admin.username)
+db.close()
+"
+```
